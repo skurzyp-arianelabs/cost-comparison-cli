@@ -39,19 +39,11 @@ export interface ChainConfig {
 
 // TODO: align with the required operations
 export enum SupportedOperation {
-  NATIVE_TRANSFER = 'nativeFT',
-  DEPLOY_ERC20 = 'erc20',
-  TRANSFER_ERC20 = 'erc20transfer',
-  DEPLOY_ERC721 = 'erc721',
-  MINT_ERC721 = 'erc721mint',
-  SMART_CONTRACT_CALL = 'contract',
+  TRANSFER_NATIVE_FT = 'transfer-native-ft',
+  DEPLOY_ERC20 = 'deploy-erc20',
+  TRANSFER_ERC20 = 'transfer-erc20',
+  DEPLOY_ERC721 = 'deploy-erc721',
+  MINT_ERC721 = 'mint-erc721',
+  SMART_CONTRACT_CALL = 'contract-call',
   TOKEN_SWAP = 'swap'
-}
-
-// TODO: migrate to using SupportedOperation enum
-export enum SupportedMethod {
-  CREATE_NATIVE_FT = 'create-native-ft',
-  CREATE_NATIVE_NFT = 'create-native-nft',
-  CREATE_ERC20 = 'create-erc20',
-  CREATE_ERC721 = 'create-erc721',
 }

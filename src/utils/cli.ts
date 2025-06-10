@@ -1,8 +1,11 @@
 import minimist from 'minimist';
 import { z } from 'zod';
-import { SupportedChain, SupportedMethod } from '../types';
+import { SupportedChain, SupportedOperation } from '../types';
 
 const rawArgs = minimist(process.argv.slice(2));
+
+const supportedChains = Object.values(SupportedChain);
+const supportedOperations = Object.values(SupportedOperation);
 
 const cliSchema = z.object({
   network: z.enum(['testnet', 'mainnet']).default('testnet'),
@@ -11,25 +14,21 @@ const cliSchema = z.object({
     .string()
     .transform((val) => val.split(','))
     .refine(
-      (chains) =>
-        chains.every((chain) =>
-          Object.values(SupportedChain).includes(chain as SupportedChain)
-        ),
+      (chains): chains is SupportedChain[] =>
+        chains.every((chain) => supportedChains.includes(chain as SupportedChain)),
       {
-        message: `Invalid chain provided. Allowed chains: ${Object.values(SupportedChain).join(', ')}`,
+        message: `Invalid chain provided. Allowed chains: ${supportedChains.join(', ')}`,
       }
     ),
 
-  methods: z
+  operations: z
     .string()
     .transform((val) => val.split(','))
     .refine(
-      (methods) =>
-        methods.every((method) =>
-          Object.values(SupportedMethod).includes(method as SupportedMethod)
-        ),
+      (ops): ops is SupportedOperation[] =>
+        ops.every((op) => supportedOperations.includes(op as SupportedOperation)),
       {
-        message: `Invalid method provided. Allowed methods: ${Object.values(SupportedMethod).join(', ')}`,
+        message: `Invalid method provided. Allowed operations: ${supportedOperations.join(', ')}`,
       }
     ),
 });
