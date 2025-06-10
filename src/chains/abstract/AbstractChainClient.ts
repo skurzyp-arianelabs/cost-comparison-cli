@@ -19,19 +19,20 @@ export abstract class AbstractChainClient implements IChainClient {
     }
   }
 
+  // Native Fungible Token Operations
   async createNativeFT(): Promise<TransactionResult> {
     throw new Error('Method not implemented.');
   }
 
-  async createNativeNFT(): Promise<TransactionResult> {
+  async associateNativeFT(): Promise<TransactionResult> {
     throw new Error('Method not implemented.');
   }
 
-  async deployERC20(): Promise<TransactionResult> {
+  async mintNativeFT(): Promise<TransactionResult> {
     throw new Error('Method not implemented.');
   }
 
-  async deployERC721(): Promise<TransactionResult> {
+  async transferNativeFT(): Promise<TransactionResult> {
     throw new Error('Method not implemented.');
   }
 
@@ -44,44 +45,28 @@ export abstract class AbstractChainClient implements IChainClient {
   }
 
   async executeOperation(operation: SupportedOperation): Promise<TransactionResult> {
-    switch (operation) {
-      case SupportedOperation.DEPLOY_ERC20:
-        try {
-          return await this.deployERC20();
-        } catch (error: any) {
-          console.error(`Error deploying ERC20: ${error.message || error}`);
-          return {
-            status: 'failed',
-            error: error.message || error,
-            timestamp: Date.now().toLocaleString(),
-            operation,
-            chain: this.chainConfig.name
-          };
-        }
-      case SupportedOperation.DEPLOY_ERC721:
-        try {
-          return await this.deployERC721();
-        } catch (error: any) {
-          console.error(`Error deploying ERC721: ${error.message || error}`);
-          return {
-            status: 'failed',
-            error: error.message || error,
-            timestamp: Date.now().toLocaleString(),
-            operation,
-            chain: this.chainConfig.name
-          };
-        }
-      default:
-        // Handle unsupported operations
-        const errorMessage = `executeOperation: Operation '${operation}' is not implemented or supported.`;
-        console.error(errorMessage);
-        return {
-          status: 'failed',
-          error: errorMessage,
-          timestamp: Date.now().toLocaleString(),
-          operation,
-          chain: this.chainConfig.name
-        };
+    try {
+      switch (operation) {
+        case SupportedOperation.CREATE_NATIVE_FT:
+          return await this.createNativeFT();
+        case SupportedOperation.ASSOCIATE_NATIVE_FT:
+          return await this.associateNativeFT();
+        case SupportedOperation.MINT_NATIVE_FT:
+          return await this.mintNativeFT();
+        case SupportedOperation.TRANSFER_NATIVE_FT:
+          return await this.transferNativeFT();
+        default:
+          throw new Error(`executeOperation: Operation '${operation}' is not implemented or supported.`);
+      }
+    } catch (error: any) {
+      console.error(`Error during operation '${operation}': ${error.message || error}`);
+      return {
+        status: 'failed',
+        error: error.message || error,
+        timestamp: Date.now().toLocaleString(),
+        operation,
+        chain: this.chainConfig.name
+      };
     }
   }
 }

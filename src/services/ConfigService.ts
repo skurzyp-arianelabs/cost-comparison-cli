@@ -12,7 +12,7 @@ export class ConfigService {
   }
 
   private loadFromEnv(): void {
-    // Load wallet credentials from environment, ONLY PRIVATE KEYS FOR NOW
+    //TODO: Load wallet credentials from environment, ONLY PRIVATE KEYS FOR NOW, ADD MNEMONICS AND ACCOUNT IDs/ADDRESS
     Object.keys(process.env).forEach((key) => {
       if (key.startsWith('WALLET_')) {
         this.config.set(key, process.env[key]);
