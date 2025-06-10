@@ -47,3 +47,11 @@ export enum SupportedOperation {
   SMART_CONTRACT_CALL = 'contract',
   TOKEN_SWAP = 'swap'
 }
+
+// TODO: migrate to using SupportedOperation enum
+export enum SupportedMethod {
+  CREATE_NATIVE_FT = 'create-native-ft',
+  CREATE_NATIVE_NFT = 'create-native-nft',
+  CREATE_ERC20 = 'create-erc20',
+  CREATE_ERC721 = 'create-erc721',
+}

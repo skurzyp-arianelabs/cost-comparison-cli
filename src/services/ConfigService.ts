@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // TODO: change to singleton
-export class ConfigService{
+export class ConfigService {
   private config: Map<string, any> = new Map();
 
   constructor() {
@@ -13,7 +13,7 @@ export class ConfigService{
 
   private loadFromEnv(): void {
     // Load wallet credentials from environment, ONLY PRIVATE KEYS FOR NOW
-    Object.keys(process.env).forEach(key => {
+    Object.keys(process.env).forEach((key) => {
       if (key.startsWith('WALLET_')) {
         this.config.set(key, process.env[key]);
       }
