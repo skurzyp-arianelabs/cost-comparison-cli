@@ -65,7 +65,7 @@ export abstract class AbstractChainClient implements IChainClient {
         error: error.message || error,
         timestamp: Date.now().toLocaleString(),
         operation,
-        chain: this.chainConfig.name
+        chain: this.chainConfig.type
       };
     }
   }

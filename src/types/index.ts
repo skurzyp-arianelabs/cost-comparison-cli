@@ -1,5 +1,5 @@
 export interface TransactionResult {
-  chain: string;
+  chain: SupportedChain;
   operation: SupportedOperation;
   transactionHash?: string;
   gasUsed?: string;
@@ -25,7 +25,7 @@ export enum SupportedChain {
 
 export interface WalletCredentials {
   privateKey?: string;
-  accountId?: string;
+  address?: string;
 }
 
 export interface ChainConfig {

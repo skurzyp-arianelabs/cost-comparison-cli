@@ -20,7 +20,7 @@ export class CostComparisonTool {
       client: this.chainClientFactory.createClient(chainId),
     }));
 
-    /*
+
     console.log('Checking chain connectivity...');
     const healthChecks = await Promise.all(
       clients.map(async ({ chainId, client }) => ({
@@ -44,10 +44,11 @@ export class CostComparisonTool {
     }
 
     console.log(`🚀 Executing ${operations.length} operations across ${healthyClients.length} chains`);
-    */
+
 
     //TODO: currently runs given operations only once for each given chain. Should support setting number of executions
-    await this.executeConcurrentOperations(clients, operations);
+    const results = await this.executeConcurrentOperations(clients, operations);
+    console.log(JSON.stringify(results, null, 2));
   }
 
   private async executeConcurrentOperations(
