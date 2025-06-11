@@ -1,4 +1,4 @@
-import { WalletCredentials } from '../types';
+import { SupportedChain, WalletCredentials } from '../types';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -20,11 +20,12 @@ export class ConfigService {
     });
   }
 
-  getWalletCredentials(chain: string): WalletCredentials {
-    const upperChain = chain.toUpperCase();
+  public getWalletCredentials(chain: SupportedChain): WalletCredentials {
+    const upperChain = chain.toUpperCase(); // enum values are lowercase, env keys are uppercase
     return {
       privateKey: this.config.get(`WALLET_${upperChain}_PRIVATE_KEY`),
       address: this.config.get(`WALLET_${upperChain}_ADDRESS`),
+      networkType: this.config.get(`WALLET_${upperChain}_NETWORK_TYPE`),
     };
   }
 }

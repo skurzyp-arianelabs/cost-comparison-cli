@@ -11,6 +11,9 @@ importers:
       '@hashgraph/sdk':
         specifier: ^2.62.0
         version: 2.66.0(bn.js@5.2.2)(react-native@0.79.3(@babel/core@7.27.4)(react@19.1.0))
+      bignumber.js:
+        specifier: ^9.3.0
+        version: 9.3.0
       chalk:
         specifier: ^5.4.1
         version: 5.4.1

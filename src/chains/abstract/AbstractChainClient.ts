@@ -1,22 +1,20 @@
-import { ChainConfig, SupportedOperation, TransactionResult, WalletCredentials } from "../../types";
+import { ChainConfig, SupportedOperation, TransactionResult } from "../../types";
 import { IChainClient } from "../IChainClient";
 import { ConfigService } from "../../services/ConfigService";
+import { CoinGeckoApiService } from "../../services/ApiService/CoinGeckoApiService";
+import { WalletService } from "../../services/WalletService";
 
 export abstract class AbstractChainClient implements IChainClient {
   protected chainConfig: ChainConfig;
-  protected credentials: WalletCredentials;
   protected configManager: ConfigService;
+  protected coinGeckoApiService: CoinGeckoApiService;
+  protected walletService: WalletService;
 
   constructor(chainConfig: ChainConfig, configService: ConfigService) {
     this.chainConfig = chainConfig;
     this.configManager = configService;
-    this.credentials = configService.getWalletCredentials(chainConfig.id);
-
-    if (!this.credentials.privateKey) {
-      throw new Error(
-        `No wallet credentials found for ${chainConfig.name}. Please set WALLET_${chainConfig.id.toUpperCase()}_PRIVATE_KEY in your .env file`
-      );
-    }
+    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.walletService = new WalletService(configService);
   }
 
   // Native Fungible Token Operations
