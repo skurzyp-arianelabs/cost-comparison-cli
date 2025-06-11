@@ -1,11 +1,3 @@
-import { AbstractChainClient } from './abstract/AbstractChainClient';
-import {
-  ChainConfig,
-  SupportedChain,
-  SupportedOperation,
-  TransactionResult,
-} from '../types';
-import { ConfigService } from '../services/ConfigService';
 import {
   Keypair,
   Connection,
@@ -14,13 +6,20 @@ import {
   Transaction,
   SystemProgram,
   sendAndConfirmTransaction,
-  Commitment,
 } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
   createInitializeMintInstruction,
   getMinimumBalanceForRentExemptMint,
 } from '@solana/spl-token';
+import { AbstractChainClient } from './abstract/AbstractChainClient';
+import {
+  ChainConfig,
+  SupportedChain,
+  SupportedOperation,
+  TransactionResult,
+} from '../types';
+import { ConfigService } from '../services/ConfigService';
 import { SolanaWalletService } from '../services/WalletServices/SolanaWalletService';
 
 export class SolanaChainClient extends AbstractChainClient {
@@ -43,25 +42,97 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async createNativeFT(): Promise<TransactionResult> {
-    const MINT_ACCOUNT_SIZE = 82;
+    const MINT_ACCOUNT_SIZE = 82; // Size (in bytes) of the Mint account required by SPL Token program
     const solanaWalletService = this.walletService as SolanaWalletService;
 
     try {
-      const payer = solanaWalletService.getKeypair();
+      const { privateKey } = await solanaWalletService.createAccount();
+      const payer = Keypair.fromSecretKey(
+        Uint8Array.from(Buffer.from(privateKey, 'hex'))
+      );
       const mintKeypair = Keypair.generate();
-      const decimals = 6;
       const lamports = await getMinimumBalanceForRentExemptMint(
         this.connection
       );
 
-      const transaction = new Transaction().add(
+      const createTx = new Transaction().add(
         SystemProgram.createAccount({
           fromPubkey: payer.publicKey,
           newAccountPubkey: mintKeypair.publicKey,
           space: MINT_ACCOUNT_SIZE,
           lamports,
           programId: TOKEN_PROGRAM_ID,
-        }),
+        })
+      );
+
+      const createSignature = await sendAndConfirmTransaction(
+        this.connection,
+        createTx,
+        [payer, mintKeypair]
+      );
+
+      const txDetails = await this.connection.getParsedTransaction(
+        createSignature,
+        {
+          maxSupportedTransactionVersion: 0,
+        }
+      );
+
+      const fee = txDetails?.meta?.fee ?? 0;
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.CREATE_NATIVE_FT,
+        transactionHash: createSignature,
+        gasUsed: fee.toString(),
+        totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+        timestamp: Date.now().toLocaleString(),
+        status: 'success',
+      };
+    } catch (error: any) {
+      console.error('createNativeFT error:', error);
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.CREATE_NATIVE_FT,
+        timestamp: Date.now().toLocaleString(),
+        status: 'failed',
+        error: error?.message || String(error),
+      };
+    }
+  }
+
+  async mintNativeFT(): Promise<TransactionResult> {
+    const MINT_ACCOUNT_SIZE = 82;
+    const solanaWalletService = this.walletService as SolanaWalletService;
+
+    try {
+      const { privateKey } = await solanaWalletService.createAccount();
+      const payer = Keypair.fromSecretKey(
+        Uint8Array.from(Buffer.from(privateKey, 'hex'))
+      );
+      const mintKeypair = Keypair.generate();
+      const decimals = 6;
+      const lamports = await getMinimumBalanceForRentExemptMint(
+        this.connection
+      );
+
+      const createTx = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mintKeypair.publicKey,
+          space: MINT_ACCOUNT_SIZE,
+          lamports,
+          programId: TOKEN_PROGRAM_ID,
+        })
+      );
+
+      const createSignature = await sendAndConfirmTransaction(
+        this.connection,
+        createTx,
+        [payer, mintKeypair]
+      );
+
+      const mintTx = new Transaction().add(
         createInitializeMintInstruction(
           mintKeypair.publicKey,
           decimals,
@@ -71,22 +142,24 @@ export class SolanaChainClient extends AbstractChainClient {
         )
       );
 
-      const signature = await sendAndConfirmTransaction(
+      const mintSignature = await sendAndConfirmTransaction(
         this.connection,
-        transaction,
+        mintTx,
         [payer, mintKeypair]
       );
 
-      const txDetails = await this.connection.getParsedTransaction(signature, {
-        maxSupportedTransactionVersion: 0,
-      });
+      const mintTxDetails = await this.connection.getParsedTransaction(
+        mintSignature,
+        {
+          maxSupportedTransactionVersion: 0,
+        }
+      );
 
-      const fee = txDetails?.meta?.fee ?? 0;
-
+      const fee = mintTxDetails?.meta?.fee ?? 0;
       return {
         chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.CREATE_NATIVE_FT,
-        transactionHash: signature,
+        operation: SupportedOperation.MINT_NATIVE_FT,
+        transactionHash: createSignature,
         gasUsed: fee.toString(),
         totalCost: (fee / LAMPORTS_PER_SOL).toString(),
         nativeCurrencySymbol: this.chainConfig.nativeCurrency,
@@ -109,13 +182,12 @@ export class SolanaChainClient extends AbstractChainClient {
     throw new Error('Method not implemented.');
   }
 
-  async mintNativeFT(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
-  }
-
   async transferNativeFT(): Promise<TransactionResult> {
     const solanaWalletService = this.walletService as SolanaWalletService;
-    const sender = solanaWalletService.getKeypair();
+    const { privateKey } = await solanaWalletService.createAccount();
+    const sender = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
     // TODO: hardcoded wallet to change
     const to = new PublicKey('3hjqHVbLQTaaUyfn6dPKtws33xpPk7ZuigSS9TdBLBHy');
     const amountSol = 0.01;

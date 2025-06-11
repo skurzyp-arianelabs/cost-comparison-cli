@@ -1,4 +1,3 @@
-import { Keypair } from '@solana/web3.js';
 import { ConfigService } from '../ConfigService';
 import { AccountData, NetworkType, SupportedChain } from '../../types';
 

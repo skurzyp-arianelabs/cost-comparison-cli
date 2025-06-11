@@ -1,7 +1,7 @@
+import { Connection, Keypair, Commitment } from '@solana/web3.js';
 import { AbstractWalletService } from './AbstractWalletService';
 import { ConfigService } from '../ConfigService';
-import { Connection, Keypair, Commitment } from '@solana/web3.js';
-import { SupportedChain } from '../../types';
+import { AccountData, SupportedChain } from '../../types';
 
 export class SolanaWalletService extends AbstractWalletService {
   private connection: Connection;
@@ -21,26 +21,27 @@ export class SolanaWalletService extends AbstractWalletService {
     return this.connection;
   }
 
-  public getKeypair(): Keypair {
-    const privateKeyHex = this.configService.getWalletCredentials(
-      this.getSupportedChain()
-    ).privateKey!;
-
-    return Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKeyHex, 'hex'))
-    );
-  }
-
   public async createAccountAndReturnClient(): Promise<any> {
     throw new Error('Not implemented for Solana.');
   }
 
-  public async createAccount(): Promise<any> {
-    throw new Error('Not implemented for Solana.');
+  public async createAccount(): Promise<AccountData> {
+    const privateKeyHex = this.configService.getWalletCredentials(
+      this.getSupportedChain()
+    ).privateKey!;
+    const keypair = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKeyHex, 'hex'))
+    );
+
+    return {
+      accountAddress: keypair.publicKey.toBase58(),
+      publicKey: keypair.publicKey.toBase58(),
+      privateKey: privateKeyHex,
+    };
   }
 
   protected createClient(): Connection {
-    return this.initClient(); // fallback
+    return this.initClient();
   }
 
   protected getSupportedChain(): SupportedChain {
@@ -48,7 +49,7 @@ export class SolanaWalletService extends AbstractWalletService {
   }
 
   private getRpcUrl(): string {
-    const rpcFromEnv = process.env[`SOLANA_RPC_URL`];
+    const rpcFromEnv = process.env.SOLANA_RPC_URL;
     if (!rpcFromEnv) {
       throw new Error('Missing SOLANA_RPC_URL in .env');
     }
