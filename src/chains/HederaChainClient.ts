@@ -5,18 +5,21 @@ import {
   AccountInfoQuery,
   Client,
   Status,
+  TokenAssociateTransaction,
   TokenCreateTransaction, TokenMintTransaction,
   TokenType
 } from "@hashgraph/sdk";
 
 import { BigNumber } from "bignumber.js";
+import { HederaWalletService } from "../services/WalletServices/HederaWalletService";
 
 export class HederaChainClient extends AbstractChainClient {
   private readonly client: Client;
 
   constructor(chainConfig: ChainConfig, configService: ConfigService) {
-    super(chainConfig, configService);
-    this.client = this.walletService.getHederaClient();
+    const hederaWalletService = new HederaWalletService(configService)
+    super(chainConfig, configService, hederaWalletService);
+    this.client = this.walletService.getClient();
   }
 
   async isHealthy(): Promise<boolean> {
@@ -61,22 +64,60 @@ export class HederaChainClient extends AbstractChainClient {
       gasUsed: txRecord.transactionFee.toString(),
       totalCost: txRecord.transactionFee.toBigNumber().toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency,
-      usdCost: txRecord.transactionFee.toBigNumber().multipliedBy(hbarPriceBN).toString(), // TODO: might changing the type to BigNumber
+      usdCost: txRecord.transactionFee.toBigNumber().multipliedBy(hbarPriceBN).toString(), // TODO: might require changing the type to BigNumber
       timestamp: txRecord.consensusTimestamp.toString(),
       status: txReceipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
     }
   }
 
   /**
-   *  1. create a new token from account form envs
+   *  1. create a new token from an account from envs
    *  2. create a new account with limited autoassociation
    *  3. associate the new account with the token and get the tx report
    */
   async associateNativeFT(): Promise<TransactionResult> {
-    // 1. create a new token from account form envs
-    // 2. create a new account with limited autoassociation
-    // 3. associate the new account with a token and get the tx report
-    throw new Error('Method not implemented.');
+    // 1. create a new account
+
+    const newAccountClient = await this.walletService.createAccountAndReturnClient();
+
+    // 2. create a token from the newly crated account
+
+    const tx = new TokenCreateTransaction()
+      .setTokenName("Your Token Name")
+      .setTokenSymbol("F")
+      .setTokenType(TokenType.FungibleCommon)
+      .setDecimals(0)
+      .setInitialSupply(1000)
+      .setTreasuryAccountId(newAccountClient.operatorAccountId!)
+      .setSupplyKey(newAccountClient.operatorPublicKey!);
+
+    const txResponse = await tx.execute(newAccountClient);
+    const txReceipt = await txResponse.getReceipt(newAccountClient);
+    const tokenId = txReceipt.tokenId!;
+
+    // 3. associate the account from env with the token and get the tx report
+
+    const tx2 = new TokenAssociateTransaction()
+      .setAccountId(this.client.operatorAccountId!)
+      .setTokenIds([tokenId]) //Fill in the token ID
+
+    const tx2Response = await tx2.execute(this.client);
+    const tx2Receipt = await tx2Response.getReceipt(this.client);
+    const tx2Record = await tx2Response.getRecord(this.client);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())["hedera-hashgraph"].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
+      transactionHash: tx2Response.transactionId.toString(),
+      totalCost: tx2Record.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      usdCost: tx2Record.transactionFee.toBigNumber().multipliedBy(hbarPriceBN).toString(), // TODO: might require changing the type to BigNumber
+      timestamp: tx2Record.consensusTimestamp.toString(),
+      status: tx2Receipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
+    }
   }
 
   /**
@@ -106,12 +147,6 @@ export class HederaChainClient extends AbstractChainClient {
     const tx2Response = await tx2.execute(this.client);
     const tx2Receipt = await tx2Response.getReceipt(this.client);
     const tx2Record = await tx2Response.getRecord(this.client);
-    const verboseRecord = await txResponse.getVerboseRecord(this.client);
-
-    console.log(`tx2Response: ${JSON.stringify(tx2Response, null, 2)}`);
-    console.log(`tx2Receipt: ${JSON.stringify(tx2Receipt, null, 2)}`);
-    console.log(`tx2Record: ${JSON.stringify(tx2Record, null, 2)}`);
-    console.log(`verboseRecord: ${JSON.stringify(verboseRecord, null, 2)}`);
 
     const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())["hedera-hashgraph"].usd;
     const hbarPriceBN = new BigNumber(hbarUSDPrice);
@@ -122,7 +157,7 @@ export class HederaChainClient extends AbstractChainClient {
       transactionHash: tx2Response.transactionId.toString(),
       totalCost: tx2Record.transactionFee.toBigNumber().toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency,
-      usdCost: tx2Record.transactionFee.toBigNumber().multipliedBy(hbarPriceBN).toString(), // TODO: might changing the type to BigNumber
+      usdCost: tx2Record.transactionFee.toBigNumber().multipliedBy(hbarPriceBN).toString(), // TODO: might require changing the type to BigNumber
       timestamp: tx2Record.consensusTimestamp.toString(),
       status: tx2Receipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
     }

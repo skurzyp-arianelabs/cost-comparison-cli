@@ -2,19 +2,19 @@ import { ChainConfig, SupportedOperation, TransactionResult } from "../../types"
 import { IChainClient } from "../IChainClient";
 import { ConfigService } from "../../services/ConfigService";
 import { CoinGeckoApiService } from "../../services/ApiService/CoinGeckoApiService";
-import { WalletService } from "../../services/WalletService";
+import { AbstractWalletService } from "../../services/WalletServices/AbstractWalletService";
 
 export abstract class AbstractChainClient implements IChainClient {
   protected chainConfig: ChainConfig;
   protected configManager: ConfigService;
   protected coinGeckoApiService: CoinGeckoApiService;
-  protected walletService: WalletService;
+  protected walletService: AbstractWalletService;
 
-  constructor(chainConfig: ChainConfig, configService: ConfigService) {
+  constructor(chainConfig: ChainConfig, configService: ConfigService, walletService: AbstractWalletService) {
     this.chainConfig = chainConfig;
     this.configManager = configService;
     this.coinGeckoApiService = new CoinGeckoApiService();
-    this.walletService = new WalletService(configService);
+    this.walletService = walletService;
   }
 
   // Native Fungible Token Operations

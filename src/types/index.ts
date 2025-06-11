@@ -86,3 +86,9 @@ export enum NetworkType {
   MAINNET = 'mainnet',
   PREVIEWNET = 'previewnet'
 }
+
+export type AccountData = {
+  accountAddress: string;
+  privateKey: string;
+  publicKey: string;
+};
