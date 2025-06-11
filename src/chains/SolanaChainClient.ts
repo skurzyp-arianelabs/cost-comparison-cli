@@ -184,49 +184,57 @@ export class SolanaChainClient extends AbstractChainClient {
 
   async transferNativeFT(): Promise<TransactionResult> {
     const solanaWalletService = this.walletService as SolanaWalletService;
-    const { privateKey } = await solanaWalletService.createAccount();
-    const sender = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
-    // TODO: hardcoded wallet to change
-    const to = new PublicKey('3hjqHVbLQTaaUyfn6dPKtws33xpPk7ZuigSS9TdBLBHy');
-    const amountSol = 0.01;
 
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: sender.publicKey,
-        toPubkey: to,
-        lamports: amountSol * LAMPORTS_PER_SOL,
-      })
-    );
+    try {
+      const { privateKey } = await solanaWalletService.createAccount();
+      const sender = Keypair.fromSecretKey(
+        Uint8Array.from(Buffer.from(privateKey, 'hex'))
+      );
+      // TODO: hardcoded wallet to change
+      const to = new PublicKey('3hjqHVbLQTaaUyfn6dPKtws33xpPk7ZuigSS9TdBLBHy');
+      const amountSol = 0.01;
 
-    const transactionSignature = await sendAndConfirmTransaction(
-      this.connection,
-      transaction,
-      [sender]
-    );
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: sender.publicKey,
+          toPubkey: to,
+          lamports: amountSol * LAMPORTS_PER_SOL,
+        })
+      );
 
-    const transactionDetails = await this.connection.getParsedTransaction(
-      transactionSignature,
-      {
-        maxSupportedTransactionVersion: 0,
-      }
-    );
+      const transactionSignature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [sender]
+      );
 
-    const { fee } = transactionDetails?.meta ?? {};
-    const isSuccess = transactionDetails?.meta?.err === null;
+      const transactionDetails = await this.connection.getParsedTransaction(
+        transactionSignature,
+        {
+          maxSupportedTransactionVersion: 0,
+        }
+      );
 
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.TRANSFER_NATIVE_FT,
-      transactionHash: transactionSignature,
-      gasUsed: fee?.toString() ?? '',
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
-      timestamp: Date.now().toLocaleString(),
-      status: isSuccess ? 'success' : 'failed',
-      error: isSuccess
-        ? undefined
-        : JSON.stringify(transactionDetails?.meta?.err),
-    };
+      const { fee } = transactionDetails?.meta ?? {};
+
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.TRANSFER_NATIVE_FT,
+        transactionHash: transactionSignature,
+        gasUsed: fee?.toString() ?? '',
+        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+        timestamp: Date.now().toLocaleString(),
+        status: 'success',
+      };
+    } catch (error: any) {
+      console.error('transferNativeFT error:', error);
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.TRANSFER_NATIVE_FT,
+        timestamp: Date.now().toLocaleString(),
+        status: 'failed',
+        error: error?.message || String(error),
+      };
+    }
   }
 }
