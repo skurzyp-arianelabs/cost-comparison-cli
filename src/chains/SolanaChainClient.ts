@@ -16,6 +16,11 @@ import {
   sendAndConfirmTransaction,
   Commitment,
 } from '@solana/web3.js';
+import {
+  TOKEN_PROGRAM_ID,
+  createInitializeMintInstruction,
+  getMinimumBalanceForRentExemptMint,
+} from '@solana/spl-token';
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
@@ -38,9 +43,68 @@ export class SolanaChainClient extends AbstractChainClient {
     }
   }
 
-  // Native Fungible Token Operations
   async createNativeFT(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
+    const MINT_ACCOUNT_SIZE = 82;
+
+    try {
+      const payer = Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(this.credentials.privateKey!))
+      );
+      const mintKeypair = Keypair.generate();
+      const decimals = 6;
+      const lamports = await getMinimumBalanceForRentExemptMint(
+        this.connection
+      );
+
+      const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mintKeypair.publicKey,
+          space: MINT_ACCOUNT_SIZE,
+          lamports,
+          programId: TOKEN_PROGRAM_ID,
+        }),
+        createInitializeMintInstruction(
+          mintKeypair.publicKey,
+          decimals,
+          payer.publicKey, // mint authority
+          null, // freeze authority
+          TOKEN_PROGRAM_ID
+        )
+      );
+
+      const signature = await sendAndConfirmTransaction(
+        this.connection,
+        transaction,
+        [payer, mintKeypair]
+      );
+
+      const txDetails = await this.connection.getParsedTransaction(signature, {
+        maxSupportedTransactionVersion: 0,
+      });
+
+      const fee = txDetails?.meta?.fee ?? 0;
+
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.CREATE_NATIVE_FT,
+        transactionHash: signature,
+        gasUsed: fee.toString(),
+        totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+        timestamp: Date.now().toLocaleString(),
+        status: 'success',
+      };
+    } catch (error: any) {
+      console.error('createNativeFT error:', error);
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.CREATE_NATIVE_FT,
+        timestamp: Date.now().toLocaleString(),
+        status: 'failed',
+        error: error?.message || String(error),
+      };
+    }
   }
 
   async associateNativeFT(): Promise<TransactionResult> {
