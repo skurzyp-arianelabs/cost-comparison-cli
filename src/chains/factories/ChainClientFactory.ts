@@ -1,8 +1,8 @@
-import { ConfigService } from "../../services/ConfigService";
-import { ChainConfig, SupportedChain } from "../../types";
-import { IChainClient } from "../IChainClient";
-import { HederaChainClient } from "../HederaChainClient";
-import { SolanaChainClient } from "../SolanaChainClient";
+import { ConfigService } from '../../services/ConfigService';
+import { ChainConfig, SupportedChain } from '../../types';
+import { IChainClient } from '../IChainClient';
+import { HederaChainClient } from '../HederaChainClient';
+import { SolanaChainClient } from '../SolanaChainClient';
 
 export class ChainClientFactory {
   private configService: ConfigService;
@@ -23,18 +23,19 @@ export class ChainClientFactory {
         name: 'Hedera',
         type: SupportedChain.HEDERA,
         nativeCurrency: 'HBAR',
-        explorerUrl: 'https://hashscan.io'
+        explorerUrl: 'https://hashscan.io',
       },
       {
         id: 'solana',
         name: 'Solana',
         type: SupportedChain.SOLANA,
         nativeCurrency: 'SOL',
-        explorerUrl: 'https://solscan.io'
-      }
+        explorerUrl: 'https://solscan.io',
+        rpcUrl: 'https://api.devnet.solana.com',
+      },
     ];
 
-    configs.forEach(config => {
+    configs.forEach((config) => {
       this.chainConfigs.set(config.id, config);
     });
   }
@@ -51,7 +52,9 @@ export class ChainClientFactory {
       case SupportedChain.SOLANA:
         return new SolanaChainClient(config, this.configService);
       default:
-        throw new Error(`No client implementation for chain type: ${config.type}`);
+        throw new Error(
+          `No client implementation for chain type: ${config.type}`
+        );
     }
   }
 
