@@ -48,7 +48,7 @@ export class SolanaChainClient extends AbstractChainClient {
 
     try {
       const payer = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(this.credentials.privateKey!))
+        Uint8Array.from(Buffer.from(this.credentials.privateKey!, 'hex'))
       );
       const mintKeypair = Keypair.generate();
       const decimals = 6;
@@ -117,7 +117,7 @@ export class SolanaChainClient extends AbstractChainClient {
 
   async transferNativeFT(): Promise<TransactionResult> {
     const accountPrivateKeyBytes = Uint8Array.from(
-      JSON.parse(this.credentials.privateKey!)
+      Buffer.from(this.credentials.privateKey!, 'hex')
     );
 
     const sender = Keypair.fromSecretKey(accountPrivateKeyBytes);
