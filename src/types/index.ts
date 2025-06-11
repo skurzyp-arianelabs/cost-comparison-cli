@@ -26,6 +26,7 @@ export enum SupportedChain {
 export interface WalletCredentials {
   privateKey?: string;
   address?: string;
+  networkType?: NetworkType;
 }
 
 export interface ChainConfig {
@@ -79,3 +80,15 @@ export enum SupportedOperation {
   SMART_CONTRACT_CALL = 'contract-call',
   TOKEN_SWAP = 'swap'
 }
+
+export enum NetworkType {
+  TESTNET = 'testnet',
+  MAINNET = 'mainnet',
+  PREVIEWNET = 'previewnet'
+}
+
+export type AccountData = {
+  accountAddress: string;
+  privateKey: string;
+  publicKey: string;
+};

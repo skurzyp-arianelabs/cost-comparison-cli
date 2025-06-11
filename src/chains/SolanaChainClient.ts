@@ -21,16 +21,15 @@ import {
   createInitializeMintInstruction,
   getMinimumBalanceForRentExemptMint,
 } from '@solana/spl-token';
+import { SolanaWalletService } from '../services/WalletServices/SolanaWalletService';
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
 
   constructor(chainConfig: ChainConfig, configService: ConfigService) {
-    super(chainConfig, configService);
-
-    const rpcUrl = chainConfig.rpcUrl || 'https://api.devnet.solana.com';
-    const commitment: Commitment = 'confirmed';
-    this.connection = new Connection(rpcUrl, commitment);
+    const solanaWalletService = new SolanaWalletService(configService);
+    super(chainConfig, configService, solanaWalletService);
+    this.connection = solanaWalletService.getClient();
   }
 
   async isHealthy(): Promise<boolean> {
@@ -45,11 +44,10 @@ export class SolanaChainClient extends AbstractChainClient {
 
   async createNativeFT(): Promise<TransactionResult> {
     const MINT_ACCOUNT_SIZE = 82;
+    const solanaWalletService = this.walletService as SolanaWalletService;
 
     try {
-      const payer = Keypair.fromSecretKey(
-        Uint8Array.from(Buffer.from(this.credentials.privateKey!, 'hex'))
-      );
+      const payer = solanaWalletService.getKeypair();
       const mintKeypair = Keypair.generate();
       const decimals = 6;
       const lamports = await getMinimumBalanceForRentExemptMint(
@@ -116,11 +114,9 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async transferNativeFT(): Promise<TransactionResult> {
-    const accountPrivateKeyBytes = Uint8Array.from(
-      Buffer.from(this.credentials.privateKey!, 'hex')
-    );
-
-    const sender = Keypair.fromSecretKey(accountPrivateKeyBytes);
+    const solanaWalletService = this.walletService as SolanaWalletService;
+    const sender = solanaWalletService.getKeypair();
+    // TODO: hardcoded wallet to change
     const to = new PublicKey('3hjqHVbLQTaaUyfn6dPKtws33xpPk7ZuigSS9TdBLBHy');
     const amountSol = 0.01;
 

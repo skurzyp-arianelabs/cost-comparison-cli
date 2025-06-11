@@ -22,6 +22,7 @@
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.2",
     "bs58": "^6.0.0",
+    "bignumber.js": "^9.3.0",
     "chalk": "^5.4.1",
     "cron": "^4.3.0",
     "date-fns": "^4.1.0",
