@@ -364,4 +364,19 @@ export class SolanaChainClient extends AbstractChainClient {
       };
     }
   }
+
+  async createERC20_RPC(): Promise<TransactionResult> {
+    const result = await this.createNativeFT();
+    return { ...result, operation: SupportedOperation.CREATE_ERC20_HARDHAT };
+  }
+
+  async mintERC20_RPC(): Promise<TransactionResult> {
+    const result = await this.mintNativeFT();
+    return { ...result, operation: SupportedOperation.MINT_ERC20_HARDHAT };
+  }
+
+  async transferERC20_RPC(): Promise<TransactionResult> {
+    const result = await this.transferNativeFT();
+    return { ...result, operation: SupportedOperation.TRANSFER_ERC20_HARDHAT };
+  }
 }
