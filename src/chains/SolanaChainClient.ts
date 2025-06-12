@@ -17,7 +17,19 @@ import {
   mintTo,
   transfer,
 } from '@solana/spl-token';
+import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import {
+  createV1,
+  mplTokenMetadata,
+} from '@metaplex-foundation/mpl-token-metadata';
+import {
+  createSignerFromKeypair,
+  generateSigner,
+  percentAmount,
+  signerIdentity,
+} from '@metaplex-foundation/umi';
 import BigNumber from 'bignumber.js';
+import bs58 from 'bs58';
 import { AbstractChainClient } from './abstract/AbstractChainClient';
 import {
   ChainConfig,
@@ -61,308 +73,257 @@ export class SolanaChainClient extends AbstractChainClient {
   async createNativeFT(): Promise<TransactionResult> {
     const solanaWalletService = this.walletService as SolanaWalletService;
 
-    try {
-      const { privateKey } = await solanaWalletService.createAccount();
-      const payer = Keypair.fromSecretKey(
-        Uint8Array.from(Buffer.from(privateKey, 'hex'))
-      );
-      const mintKeypair = Keypair.generate();
-      const lamports = await getMinimumBalanceForRentExemptMint(
-        this.connection
-      );
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
+    const mintKeypair = Keypair.generate();
+    const lamports = await getMinimumBalanceForRentExemptMint(this.connection);
 
-      const createTx = new Transaction().add(
-        SystemProgram.createAccount({
-          fromPubkey: payer.publicKey,
-          newAccountPubkey: mintKeypair.publicKey,
-          space: MINT_ACCOUNT_SIZE,
-          lamports,
-          programId: TOKEN_PROGRAM_ID,
-        })
-      );
+    const createTx = new Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: mintKeypair.publicKey,
+        space: MINT_ACCOUNT_SIZE,
+        lamports,
+        programId: TOKEN_PROGRAM_ID,
+      })
+    );
 
-      const createSignature = await sendAndConfirmTransaction(
-        this.connection,
-        createTx,
-        [payer, mintKeypair]
-      );
+    const createSignature = await sendAndConfirmTransaction(
+      this.connection,
+      createTx,
+      [payer, mintKeypair]
+    );
 
-      const txDetails = await this.connection.getParsedTransaction(
-        createSignature,
-        {
-          maxSupportedTransactionVersion: 0,
-        }
-      );
+    const txDetails = await this.connection.getParsedTransaction(
+      createSignature,
+      {
+        maxSupportedTransactionVersion: 0,
+      }
+    );
 
-      const fee = txDetails?.meta?.fee ?? 0;
-      await this.fetchSolPrice();
-      const usdCost = calculateUsdCost(
-        fee,
-        this.solPriceUSD,
-        this.chainConfig.decimals
-      );
+    const fee = txDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.decimals
+    );
 
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.CREATE_NATIVE_FT,
-        transactionHash: createSignature,
-        gasUsed: fee.toString(),
-        totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-        usdCost,
-        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
-        timestamp: Date.now().toLocaleString(),
-        status: 'success',
-      };
-    } catch (error: any) {
-      console.error('createNativeFT error:', error);
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.CREATE_NATIVE_FT,
-        timestamp: Date.now().toLocaleString(),
-        status: 'failed',
-        error: error?.message || String(error),
-      };
-    }
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.CREATE_NATIVE_FT,
+      transactionHash: createSignature,
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
   }
 
   async associateNativeFT(): Promise<TransactionResult> {
     const solanaWalletService = this.walletService as SolanaWalletService;
 
-    try {
-      const { privateKey } = await solanaWalletService.createAccount();
-      const payer = Keypair.fromSecretKey(
-        Uint8Array.from(Buffer.from(privateKey, 'hex'))
-      );
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
 
-      const mintAccount = await createMint(
-        this.connection,
-        payer,
-        payer.publicKey, // mint authority
-        null, // freeze authority
-        6
-      );
+    const mintAccount = await createMint(
+      this.connection,
+      payer,
+      payer.publicKey, // mint authority
+      null, // freeze authority
+      6
+    );
 
-      const recipient = Keypair.generate();
+    const recipient = Keypair.generate();
 
-      const ata = getAssociatedTokenAddressSync(
-        mintAccount,
-        recipient.publicKey
-      );
+    const ata = getAssociatedTokenAddressSync(mintAccount, recipient.publicKey);
 
-      const associateIx = createAssociatedTokenAccountInstruction(
-        payer.publicKey,
-        ata,
-        recipient.publicKey,
-        mintAccount
-      );
+    const associateIx = createAssociatedTokenAccountInstruction(
+      payer.publicKey,
+      ata,
+      recipient.publicKey,
+      mintAccount
+    );
 
-      const tx = new Transaction().add(associateIx);
+    const tx = new Transaction().add(associateIx);
 
-      const signature = await sendAndConfirmTransaction(this.connection, tx, [
-        payer,
-      ]);
+    const signature = await sendAndConfirmTransaction(this.connection, tx, [
+      payer,
+    ]);
 
-      const txDetails = await this.connection.getParsedTransaction(signature, {
-        maxSupportedTransactionVersion: 0,
-      });
+    const txDetails = await this.connection.getParsedTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+    });
 
-      const fee = txDetails?.meta?.fee ?? 0;
-      await this.fetchSolPrice();
-      const usdCost = calculateUsdCost(
-        fee,
-        this.solPriceUSD,
-        this.chainConfig.decimals
-      );
+    const fee = txDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.decimals
+    );
 
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
-        transactionHash: signature,
-        gasUsed: fee.toString(),
-        totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-        usdCost,
-        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
-        timestamp: Date.now().toLocaleString(),
-        status: 'success',
-      };
-    } catch (error: any) {
-      console.error('associateNativeFT error:', error);
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
-        timestamp: Date.now().toLocaleString(),
-        status: 'failed',
-        error: error?.message || String(error),
-      };
-    }
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
+      transactionHash: signature,
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
   }
 
   async mintNativeFT(): Promise<TransactionResult> {
     const solanaWalletService = this.walletService as SolanaWalletService;
 
-    try {
-      const { privateKey } = await solanaWalletService.createAccount();
-      const payer = Keypair.fromSecretKey(
-        Uint8Array.from(Buffer.from(privateKey, 'hex'))
-      );
-      const mintKeypair = Keypair.generate();
-      const decimals = 6;
-      const lamports = await getMinimumBalanceForRentExemptMint(
-        this.connection
-      );
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
+    const mintKeypair = Keypair.generate();
+    const decimals = 6;
+    const lamports = await getMinimumBalanceForRentExemptMint(this.connection);
 
-      const createTx = new Transaction().add(
-        SystemProgram.createAccount({
-          fromPubkey: payer.publicKey,
-          newAccountPubkey: mintKeypair.publicKey,
-          space: MINT_ACCOUNT_SIZE,
-          lamports,
-          programId: TOKEN_PROGRAM_ID,
-        })
-      );
+    const createTx = new Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: mintKeypair.publicKey,
+        space: MINT_ACCOUNT_SIZE,
+        lamports,
+        programId: TOKEN_PROGRAM_ID,
+      })
+    );
 
-      const createSignature = await sendAndConfirmTransaction(
-        this.connection,
-        createTx,
-        [payer, mintKeypair]
-      );
+    const createSignature = await sendAndConfirmTransaction(
+      this.connection,
+      createTx,
+      [payer, mintKeypair]
+    );
 
-      const mintTx = new Transaction().add(
-        createInitializeMintInstruction(
-          mintKeypair.publicKey,
-          decimals,
-          payer.publicKey, // mint authority
-          null, // freeze authority
-          TOKEN_PROGRAM_ID
-        )
-      );
+    const mintTx = new Transaction().add(
+      createInitializeMintInstruction(
+        mintKeypair.publicKey,
+        decimals,
+        payer.publicKey, // mint authority
+        null, // freeze authority
+        TOKEN_PROGRAM_ID
+      )
+    );
 
-      const mintSignature = await sendAndConfirmTransaction(
-        this.connection,
-        mintTx,
-        [payer]
-      );
+    const mintSignature = await sendAndConfirmTransaction(
+      this.connection,
+      mintTx,
+      [payer]
+    );
 
-      const mintTxDetails = await this.connection.getParsedTransaction(
-        mintSignature,
-        {
-          maxSupportedTransactionVersion: 0,
-        }
-      );
+    const mintTxDetails = await this.connection.getParsedTransaction(
+      mintSignature,
+      {
+        maxSupportedTransactionVersion: 0,
+      }
+    );
 
-      const fee = mintTxDetails?.meta?.fee ?? 0;
-      await this.fetchSolPrice();
-      const usdCost = calculateUsdCost(
-        fee,
-        this.solPriceUSD,
-        this.chainConfig.decimals
-      );
+    const fee = mintTxDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.decimals
+    );
 
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.MINT_NATIVE_FT,
-        transactionHash: createSignature,
-        gasUsed: fee.toString(),
-        totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-        usdCost,
-        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
-        timestamp: Date.now().toLocaleString(),
-        status: 'success',
-      };
-    } catch (error: any) {
-      console.error('createNativeFT error:', error);
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.CREATE_NATIVE_FT,
-        timestamp: Date.now().toLocaleString(),
-        status: 'failed',
-        error: error?.message || String(error),
-      };
-    }
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.MINT_NATIVE_FT,
+      transactionHash: createSignature,
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
   }
 
   async transferNativeFT(): Promise<TransactionResult> {
     const solanaWalletService = this.walletService as SolanaWalletService;
 
-    try {
-      const { privateKey } = await solanaWalletService.createAccount();
-      const payer = Keypair.fromSecretKey(
-        Uint8Array.from(Buffer.from(privateKey, 'hex'))
-      );
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
 
-      const mint = await createMint(
-        this.connection,
-        payer,
-        payer.publicKey, // mint authority
-        null, // freeze authority
-        6
-      );
+    const mint = await createMint(
+      this.connection,
+      payer,
+      payer.publicKey, // mint authority
+      null, // freeze authority
+      6
+    );
 
-      const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
-        this.connection,
-        payer,
-        mint,
-        payer.publicKey
-      );
+    const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
+      this.connection,
+      payer,
+      mint,
+      payer.publicKey
+    );
 
-      const recipientKeypair = Keypair.generate();
-      const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
-        this.connection,
-        payer,
-        mint,
-        recipientKeypair.publicKey
-      );
+    const recipientKeypair = Keypair.generate();
+    const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+      this.connection,
+      payer,
+      mint,
+      recipientKeypair.publicKey
+    );
 
-      await mintTo(
-        this.connection,
-        payer,
-        mint,
-        senderTokenAccount.address,
-        payer,
-        1_000_000
-      );
+    await mintTo(
+      this.connection,
+      payer,
+      mint,
+      senderTokenAccount.address,
+      payer,
+      1_000_000
+    );
 
-      const transferSignature = await transfer(
-        this.connection,
-        payer,
-        senderTokenAccount.address,
-        recipientTokenAccount.address,
-        payer,
-        1_000_000
-      );
+    const transferSignature = await transfer(
+      this.connection,
+      payer,
+      senderTokenAccount.address,
+      recipientTokenAccount.address,
+      payer,
+      1_000_000
+    );
 
-      const txDetails = await this.connection.getParsedTransaction(
-        transferSignature,
-        { maxSupportedTransactionVersion: 0 }
-      );
-      const fee = txDetails?.meta?.fee ?? 0;
-      await this.fetchSolPrice();
-      const usdCost = calculateUsdCost(
-        fee,
-        this.solPriceUSD,
-        this.chainConfig.decimals
-      );
+    const txDetails = await this.connection.getParsedTransaction(
+      transferSignature,
+      { maxSupportedTransactionVersion: 0 }
+    );
+    const fee = txDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.decimals
+    );
 
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.TRANSFER_NATIVE_FT,
-        transactionHash: transferSignature,
-        gasUsed: fee?.toString() ?? '',
-        usdCost,
-        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
-        timestamp: Date.now().toLocaleString(),
-        status: 'success',
-      };
-    } catch (error: any) {
-      console.error('transferNativeFT error:', error);
-      return {
-        chain: SupportedChain.SOLANA,
-        operation: SupportedOperation.TRANSFER_NATIVE_FT,
-        timestamp: Date.now().toLocaleString(),
-        status: 'failed',
-        error: error?.message || String(error),
-      };
-    }
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.TRANSFER_NATIVE_FT,
+      transactionHash: transferSignature,
+      gasUsed: fee?.toString() ?? '',
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
   }
 
   async createERC20_RPC(): Promise<TransactionResult> {
@@ -378,5 +339,78 @@ export class SolanaChainClient extends AbstractChainClient {
   async transferERC20_RPC(): Promise<TransactionResult> {
     const result = await this.transferNativeFT();
     return { ...result, operation: SupportedOperation.TRANSFER_ERC20_HARDHAT };
+  }
+
+  async createNativeNFT(): Promise<TransactionResult> {
+    const solanaWalletService = this.walletService as SolanaWalletService;
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
+
+    const umi = createUmi(this.connection.rpcEndpoint);
+    const umiWalletSigner = createSignerFromKeypair(
+      umi,
+      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
+    );
+
+    umi.use(signerIdentity(umiWalletSigner));
+    umi.use(mplTokenMetadata());
+
+    const umiMint = generateSigner(umi);
+
+    const nftName = 'MyNFT';
+    const nftSymbol = 'MYNFT';
+    const nftUri =
+      'https://ipfs.io/ipfs/QmTW9HWfb2wsQqEVJiixkQ73Nsfp2Rx4ESaDSiQ7ThwnFM';
+
+    const tx = createV1(umi, {
+      mint: umiMint,
+      authority: umi.identity,
+      name: nftName,
+      symbol: nftSymbol,
+      uri: nftUri,
+      sellerFeeBasisPoints: percentAmount(0),
+    });
+
+    const result = await tx.sendAndConfirm(umi);
+    const signatureBase58 = bs58.encode(result.signature as Uint8Array);
+
+    const txDetails = await this.connection.getParsedTransaction(
+      signatureBase58,
+      { maxSupportedTransactionVersion: 0 }
+    );
+
+    const fee = txDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.decimals
+    );
+
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.CREATE_NATIVE_NFT,
+      transactionHash: bs58.encode(result.signature as Uint8Array),
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
+  }
+
+  async associateNativeNFT(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintNativeNFT(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferNativeNFT(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
   }
 }
