@@ -8,8 +8,10 @@ import {
 } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction,
   createInitializeMintInstruction,
   createMint,
+  getAssociatedTokenAddressSync,
   getMinimumBalanceForRentExemptMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
@@ -24,6 +26,8 @@ import {
 } from '../types';
 import { ConfigService } from '../services/ConfigService';
 import { SolanaWalletService } from '../services/WalletServices/SolanaWalletService';
+
+const MINT_ACCOUNT_SIZE = 82; // Size (in bytes) of the Mint account required by SPL Token program
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
@@ -45,7 +49,6 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async createNativeFT(): Promise<TransactionResult> {
-    const MINT_ACCOUNT_SIZE = 82; // Size (in bytes) of the Mint account required by SPL Token program
     const solanaWalletService = this.walletService as SolanaWalletService;
 
     try {
@@ -104,8 +107,72 @@ export class SolanaChainClient extends AbstractChainClient {
     }
   }
 
+  async associateNativeFT(): Promise<TransactionResult> {
+    const solanaWalletService = this.walletService as SolanaWalletService;
+
+    try {
+      const { privateKey } = await solanaWalletService.createAccount();
+      const payer = Keypair.fromSecretKey(
+        Uint8Array.from(Buffer.from(privateKey, 'hex'))
+      );
+
+      const mintAccount = await createMint(
+        this.connection,
+        payer,
+        payer.publicKey, // mint authority
+        null, // freeze authority
+        6
+      );
+
+      const recipient = Keypair.generate();
+
+      const ata = getAssociatedTokenAddressSync(
+        mintAccount,
+        recipient.publicKey
+      );
+
+      const associateIx = createAssociatedTokenAccountInstruction(
+        payer.publicKey,
+        ata,
+        recipient.publicKey,
+        mintAccount
+      );
+
+      const tx = new Transaction().add(associateIx);
+
+      const signature = await sendAndConfirmTransaction(this.connection, tx, [
+        payer,
+      ]);
+
+      const txDetails = await this.connection.getParsedTransaction(signature, {
+        maxSupportedTransactionVersion: 0,
+      });
+
+      const fee = txDetails?.meta?.fee ?? 0;
+
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
+        transactionHash: signature,
+        gasUsed: fee.toString(),
+        totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+        nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+        timestamp: Date.now().toLocaleString(),
+        status: 'success',
+      };
+    } catch (error: any) {
+      console.error('associateNativeFT error:', error);
+      return {
+        chain: SupportedChain.SOLANA,
+        operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
+        timestamp: Date.now().toLocaleString(),
+        status: 'failed',
+        error: error?.message || String(error),
+      };
+    }
+  }
+
   async mintNativeFT(): Promise<TransactionResult> {
-    const MINT_ACCOUNT_SIZE = 82;
     const solanaWalletService = this.walletService as SolanaWalletService;
 
     try {
@@ -179,10 +246,6 @@ export class SolanaChainClient extends AbstractChainClient {
         error: error?.message || String(error),
       };
     }
-  }
-
-  async associateNativeFT(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
   }
 
   async transferNativeFT(): Promise<TransactionResult> {
