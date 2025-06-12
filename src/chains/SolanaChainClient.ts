@@ -1,7 +1,6 @@
 import {
   Keypair,
   Connection,
-  PublicKey,
   LAMPORTS_PER_SOL,
   Transaction,
   SystemProgram,
@@ -10,7 +9,11 @@ import {
 import {
   TOKEN_PROGRAM_ID,
   createInitializeMintInstruction,
+  createMint,
   getMinimumBalanceForRentExemptMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  transfer,
 } from '@solana/spl-token';
 import { AbstractChainClient } from './abstract/AbstractChainClient';
 import {
@@ -187,40 +190,61 @@ export class SolanaChainClient extends AbstractChainClient {
 
     try {
       const { privateKey } = await solanaWalletService.createAccount();
-      const sender = Keypair.fromSecretKey(
+      const payer = Keypair.fromSecretKey(
         Uint8Array.from(Buffer.from(privateKey, 'hex'))
       );
-      // TODO: hardcoded wallet to change
-      const to = new PublicKey('3hjqHVbLQTaaUyfn6dPKtws33xpPk7ZuigSS9TdBLBHy');
-      const amountSol = 0.01;
 
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: sender.publicKey,
-          toPubkey: to,
-          lamports: amountSol * LAMPORTS_PER_SOL,
-        })
-      );
-
-      const transactionSignature = await sendAndConfirmTransaction(
+      const mint = await createMint(
         this.connection,
-        transaction,
-        [sender]
+        payer,
+        payer.publicKey, // mint authority
+        null, // freeze authority
+        6
       );
 
-      const transactionDetails = await this.connection.getParsedTransaction(
-        transactionSignature,
-        {
-          maxSupportedTransactionVersion: 0,
-        }
+      const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
+        this.connection,
+        payer,
+        mint,
+        payer.publicKey
       );
 
-      const { fee } = transactionDetails?.meta ?? {};
+      const recipientKeypair = Keypair.generate();
+      const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+        this.connection,
+        payer,
+        mint,
+        recipientKeypair.publicKey
+      );
+
+      await mintTo(
+        this.connection,
+        payer,
+        mint,
+        senderTokenAccount.address,
+        payer,
+        1_000_000
+      );
+
+      const transferSignature = await transfer(
+        this.connection,
+        payer,
+        senderTokenAccount.address,
+        recipientTokenAccount.address,
+        payer,
+        1_000_000
+      );
+
+      const txDetails = await this.connection.getParsedTransaction(
+        transferSignature,
+        { maxSupportedTransactionVersion: 0 }
+      );
+      const fee = txDetails?.meta?.fee ?? 0;
 
       return {
         chain: SupportedChain.SOLANA,
         operation: SupportedOperation.TRANSFER_NATIVE_FT,
-        transactionHash: transactionSignature,
+        transactionHash: transferSignature,
         gasUsed: fee?.toString() ?? '',
         nativeCurrencySymbol: this.chainConfig.nativeCurrency,
         timestamp: Date.now().toLocaleString(),
