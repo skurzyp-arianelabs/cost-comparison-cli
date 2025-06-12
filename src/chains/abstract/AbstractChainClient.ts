@@ -34,6 +34,30 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
+  async createERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async createERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
   getChainInfo(): ChainConfig {
     return this.chainConfig;
   }
@@ -53,6 +77,18 @@ export abstract class AbstractChainClient implements IChainClient {
           return await this.mintNativeFT();
         case SupportedOperation.TRANSFER_NATIVE_FT:
           return await this.transferNativeFT();
+        case SupportedOperation.CREATE_ERC20_SDK:
+          return await this.createERC20_SDK();
+        case SupportedOperation.MINT_ERC20_SDK:
+          return await this.mintERC20_SDK();
+        case SupportedOperation.TRANSFER_ERC20_SDK:
+          return await this.transferERC20_SDK();
+        case SupportedOperation.CREATE_ERC20_HARDHAT:
+          return await this.createERC20_RPC();
+        case SupportedOperation.MINT_ERC20_HARDHAT:
+          return await this.mintERC20_RPC();
+        case SupportedOperation.TRANSFER_ERC20_HARDHAT:
+          return await this.transferERC20_RPC();
         default:
           throw new Error(`executeOperation: Operation '${operation}' is not implemented or supported.`);
       }

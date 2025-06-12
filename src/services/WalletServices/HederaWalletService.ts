@@ -38,7 +38,7 @@ export class HederaWalletService extends AbstractWalletService {
 
     const tx = new AccountCreateTransaction()
       .setKey(accountPublicKey)
-      .setInitialBalance(new Hbar(5)) // 5 HBARs will be sent from the connected account to the newly created one
+      .setInitialBalance(new Hbar(10)) // 10 HBARs will be sent from the connected account to the newly created one
       .setMaxAutomaticTokenAssociations(autoAssociation || 0); // if not set, then no auto association. To set unlimited pass -1
 
     const txResponse = await tx.execute(this.hederaClient);
