@@ -5,6 +5,7 @@ import {
   Transaction,
   SystemProgram,
   sendAndConfirmTransaction,
+  PublicKey,
 } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
@@ -19,14 +20,18 @@ import {
 } from '@solana/spl-token';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import {
+  createAndMint,
   createV1,
+  mintV1,
   mplTokenMetadata,
+  TokenStandard,
 } from '@metaplex-foundation/mpl-token-metadata';
 import {
   createSignerFromKeypair,
   generateSigner,
   percentAmount,
   signerIdentity,
+  publicKey as umiPublicKey,
 } from '@metaplex-foundation/umi';
 import BigNumber from 'bignumber.js';
 import bs58 from 'bs58';
@@ -42,6 +47,12 @@ import { SolanaWalletService } from '../services/WalletServices/SolanaWalletServ
 import { calculateUsdCost } from '../utils/calculateUsdCost';
 
 const MINT_ACCOUNT_SIZE = 82; // Size (in bytes) of the Mint account required by SPL Token program
+
+const metadata = {
+  name: 'MyNFT',
+  symbol: 'MYNFT',
+  uri: 'https://ipfs.io/ipfs/QmTW9HWfb2wsQqEVJiixkQ73Nsfp2Rx4ESaDSiQ7ThwnFM',
+};
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
@@ -353,23 +364,17 @@ export class SolanaChainClient extends AbstractChainClient {
       umi,
       umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
     );
-
     umi.use(signerIdentity(umiWalletSigner));
     umi.use(mplTokenMetadata());
 
-    const umiMint = generateSigner(umi);
-
-    const nftName = 'MyNFT';
-    const nftSymbol = 'MYNFT';
-    const nftUri =
-      'https://ipfs.io/ipfs/QmTW9HWfb2wsQqEVJiixkQ73Nsfp2Rx4ESaDSiQ7ThwnFM';
+    const mintSigner = generateSigner(umi);
 
     const tx = createV1(umi, {
-      mint: umiMint,
+      mint: mintSigner,
       authority: umi.identity,
-      name: nftName,
-      symbol: nftSymbol,
-      uri: nftUri,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      uri: metadata.uri,
       sellerFeeBasisPoints: percentAmount(0),
     });
 
@@ -392,7 +397,7 @@ export class SolanaChainClient extends AbstractChainClient {
     return {
       chain: SupportedChain.SOLANA,
       operation: SupportedOperation.CREATE_NATIVE_NFT,
-      transactionHash: bs58.encode(result.signature as Uint8Array),
+      transactionHash: signatureBase58,
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,
@@ -407,7 +412,64 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async mintNativeNFT(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
+    const solanaWalletService = this.walletService as SolanaWalletService;
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
+
+    const umi = createUmi(this.connection.rpcEndpoint);
+    const signer = createSignerFromKeypair(
+      umi,
+      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
+    );
+    umi.use(signerIdentity(signer));
+    umi.use(mplTokenMetadata());
+
+    const mintSigner = generateSigner(umi);
+
+    const tx = createAndMint(umi, {
+      mint: mintSigner,
+      authority: umi.identity,
+      payer: umi.identity,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      uri: metadata.uri,
+      sellerFeeBasisPoints: percentAmount(0),
+      tokenStandard: TokenStandard.NonFungible,
+      amount: 1,
+      tokenOwner: umi.identity.publicKey,
+    });
+
+    const result = await tx.sendAndConfirm(umi);
+    const signatureBase58 = bs58.encode(result.signature as Uint8Array);
+
+    const txDetails = await this.connection.getParsedTransaction(
+      signatureBase58,
+      {
+        maxSupportedTransactionVersion: 0,
+      }
+    );
+    const fee = txDetails?.meta?.fee ?? 0;
+
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.decimals
+    );
+
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.MINT_NATIVE_NFT,
+      transactionHash: signatureBase58,
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
   }
 
   async transferNativeNFT(): Promise<TransactionResult> {
