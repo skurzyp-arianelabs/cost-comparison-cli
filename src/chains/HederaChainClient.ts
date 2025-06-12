@@ -7,7 +7,7 @@ import {
   Status,
   TokenAssociateTransaction,
   TokenCreateTransaction, TokenMintTransaction,
-  TokenType
+  TokenType, TransferTransaction
 } from "@hashgraph/sdk";
 
 import { BigNumber } from "bignumber.js";
@@ -37,6 +37,7 @@ export class HederaChainClient extends AbstractChainClient {
 
   // Native Fungible Token Operations
   /**
+   * Key: create-native-ft
    * Steps:
    * 1. create new a token
    */
@@ -71,17 +72,16 @@ export class HederaChainClient extends AbstractChainClient {
   }
 
   /**
+   * key: associate-native-ft
    *  1. create a new token from an account from envs
    *  2. create a new account with limited autoassociation
    *  3. associate the new account with the token and get the tx report
    */
   async associateNativeFT(): Promise<TransactionResult> {
     // 1. create a new account
-
     const newAccountClient = await this.walletService.createAccountAndReturnClient();
 
     // 2. create a token from the newly crated account
-
     const tx = new TokenCreateTransaction()
       .setTokenName("Your Token Name")
       .setTokenSymbol("F")
@@ -96,7 +96,6 @@ export class HederaChainClient extends AbstractChainClient {
     const tokenId = txReceipt.tokenId!;
 
     // 3. associate the account from env with the token and get the tx report
-
     const tx2 = new TokenAssociateTransaction()
       .setAccountId(this.client.operatorAccountId!)
       .setTokenIds([tokenId]) //Fill in the token ID
@@ -121,6 +120,7 @@ export class HederaChainClient extends AbstractChainClient {
   }
 
   /**
+   * Key: mint-native-ft
    * Steps:
    * 1. create new token
    * 2. mint the new token
@@ -164,13 +164,77 @@ export class HederaChainClient extends AbstractChainClient {
   }
 
   /**
+   * key: transfer-native-ft
    * Steps:
-   * 1. create new token
-   * 2. create 2nd account
+   * 1. create a new account with autoassociation
+   * 2. create a token
    * 3. transfer the new token to the new account
    */
   async transferNativeFT(): Promise<TransactionResult> {
+    // 1. create a new account
+    const AUTOASSOCIATION_LIMIT = -1; // unlimited autoassociation
+    const newAccountClient = await this.walletService.createAccountAndReturnClient(AUTOASSOCIATION_LIMIT);
+
+    // 2. create a token from the newly crated account
+    const tx = new TokenCreateTransaction()
+      .setTokenName("Your Token Name")
+      .setTokenSymbol("F")
+      .setTokenType(TokenType.FungibleCommon)
+      .setDecimals(0)
+      .setInitialSupply(1000)
+      .setTreasuryAccountId(this.client.operatorAccountId!)
+      .setSupplyKey(this.client.operatorPublicKey!);
+
+    const txResponse = await tx.execute(this.client);
+    const txReceipt = await txResponse.getReceipt(this.client);
+    const tokenId = txReceipt.tokenId!;
+
+    // 3. associate the token to the created account
+    const tx2 = new TransferTransaction()
+      .addTokenTransfer(tokenId, this.client.operatorAccountId!, -1)
+      .addTokenTransfer(tokenId, newAccountClient.operatorAccountId!, 1);
+
+
+    const tx2Response = await tx2.execute(this.client);
+    const tx2Receipt = await tx2Response.getReceipt(this.client);
+    const tx2Record = await tx2Response.getRecord(this.client);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())["hedera-hashgraph"].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
+      transactionHash: tx2Response.transactionId.toString(),
+      totalCost: tx2Record.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      usdCost: tx2Record.transactionFee.toBigNumber().multipliedBy(hbarPriceBN).toString(), // TODO: might require changing the type to BigNumber
+      timestamp: tx2Record.consensusTimestamp.toString(),
+      status: tx2Receipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
+    }
+
+  }
+
+
+  async createERC20_SDK(): Promise<TransactionResult> {
     throw new Error('Method not implemented.');
   }
 
+  async mintERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+  async transferERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async createERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+  async transferERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
 }
