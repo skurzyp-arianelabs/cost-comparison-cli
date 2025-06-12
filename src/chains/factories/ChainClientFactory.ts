@@ -24,6 +24,7 @@ export class ChainClientFactory {
         type: SupportedChain.HEDERA,
         nativeCurrency: 'HBAR',
         explorerUrl: 'https://hashscan.io',
+        decimals: 8,
       },
       {
         id: 'solana',
@@ -32,6 +33,7 @@ export class ChainClientFactory {
         nativeCurrency: 'SOL',
         explorerUrl: 'https://solscan.io',
         rpcUrl: 'https://api.devnet.solana.com',
+        decimals: 9,
       },
     ];
 

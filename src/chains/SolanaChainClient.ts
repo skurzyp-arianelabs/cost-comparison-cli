@@ -17,6 +17,7 @@ import {
   mintTo,
   transfer,
 } from '@solana/spl-token';
+import BigNumber from 'bignumber.js';
 import { AbstractChainClient } from './abstract/AbstractChainClient';
 import {
   ChainConfig,
@@ -26,16 +27,25 @@ import {
 } from '../types';
 import { ConfigService } from '../services/ConfigService';
 import { SolanaWalletService } from '../services/WalletServices/SolanaWalletService';
+import { calculateUsdCost } from '../utils/calculateUsdCost';
 
 const MINT_ACCOUNT_SIZE = 82; // Size (in bytes) of the Mint account required by SPL Token program
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
+  private solPriceUSD!: BigNumber;
 
   constructor(chainConfig: ChainConfig, configService: ConfigService) {
     const solanaWalletService = new SolanaWalletService(configService);
     super(chainConfig, configService, solanaWalletService);
     this.connection = solanaWalletService.getClient();
+  }
+
+  private async fetchSolPrice(): Promise<void> {
+    if (!this.solPriceUSD) {
+      const solPrice = await this.coinGeckoApiService.getSolPriceInUsd();
+      this.solPriceUSD = new BigNumber(solPrice.solana.usd);
+    }
   }
 
   async isHealthy(): Promise<boolean> {
@@ -85,12 +95,20 @@ export class SolanaChainClient extends AbstractChainClient {
       );
 
       const fee = txDetails?.meta?.fee ?? 0;
+      await this.fetchSolPrice();
+      const usdCost = calculateUsdCost(
+        fee,
+        this.solPriceUSD,
+        this.chainConfig.decimals
+      );
+
       return {
         chain: SupportedChain.SOLANA,
         operation: SupportedOperation.CREATE_NATIVE_FT,
         transactionHash: createSignature,
         gasUsed: fee.toString(),
         totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+        usdCost,
         nativeCurrencySymbol: this.chainConfig.nativeCurrency,
         timestamp: Date.now().toLocaleString(),
         status: 'success',
@@ -149,6 +167,12 @@ export class SolanaChainClient extends AbstractChainClient {
       });
 
       const fee = txDetails?.meta?.fee ?? 0;
+      await this.fetchSolPrice();
+      const usdCost = calculateUsdCost(
+        fee,
+        this.solPriceUSD,
+        this.chainConfig.decimals
+      );
 
       return {
         chain: SupportedChain.SOLANA,
@@ -156,6 +180,7 @@ export class SolanaChainClient extends AbstractChainClient {
         transactionHash: signature,
         gasUsed: fee.toString(),
         totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+        usdCost,
         nativeCurrencySymbol: this.chainConfig.nativeCurrency,
         timestamp: Date.now().toLocaleString(),
         status: 'success',
@@ -215,7 +240,7 @@ export class SolanaChainClient extends AbstractChainClient {
       const mintSignature = await sendAndConfirmTransaction(
         this.connection,
         mintTx,
-        [payer, mintKeypair]
+        [payer]
       );
 
       const mintTxDetails = await this.connection.getParsedTransaction(
@@ -226,12 +251,20 @@ export class SolanaChainClient extends AbstractChainClient {
       );
 
       const fee = mintTxDetails?.meta?.fee ?? 0;
+      await this.fetchSolPrice();
+      const usdCost = calculateUsdCost(
+        fee,
+        this.solPriceUSD,
+        this.chainConfig.decimals
+      );
+
       return {
         chain: SupportedChain.SOLANA,
         operation: SupportedOperation.MINT_NATIVE_FT,
         transactionHash: createSignature,
         gasUsed: fee.toString(),
         totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+        usdCost,
         nativeCurrencySymbol: this.chainConfig.nativeCurrency,
         timestamp: Date.now().toLocaleString(),
         status: 'success',
@@ -303,12 +336,19 @@ export class SolanaChainClient extends AbstractChainClient {
         { maxSupportedTransactionVersion: 0 }
       );
       const fee = txDetails?.meta?.fee ?? 0;
+      await this.fetchSolPrice();
+      const usdCost = calculateUsdCost(
+        fee,
+        this.solPriceUSD,
+        this.chainConfig.decimals
+      );
 
       return {
         chain: SupportedChain.SOLANA,
         operation: SupportedOperation.TRANSFER_NATIVE_FT,
         transactionHash: transferSignature,
         gasUsed: fee?.toString() ?? '',
+        usdCost,
         nativeCurrencySymbol: this.chainConfig.nativeCurrency,
         timestamp: Date.now().toLocaleString(),
         status: 'success',

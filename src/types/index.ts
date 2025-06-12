@@ -37,6 +37,7 @@ export interface ChainConfig {
   networkId?: string;
   nativeCurrency: string;
   explorerUrl: string;
+  decimals: number;
 }
 
 // TODO: align with the required operations
@@ -78,13 +79,13 @@ export enum SupportedOperation {
 
   // Additional (Already Present)
   SMART_CONTRACT_CALL = 'contract-call',
-  TOKEN_SWAP = 'swap'
+  TOKEN_SWAP = 'swap',
 }
 
 export enum NetworkType {
   TESTNET = 'testnet',
   MAINNET = 'mainnet',
-  PREVIEWNET = 'previewnet'
+  PREVIEWNET = 'previewnet',
 }
 
 export type AccountData = {
