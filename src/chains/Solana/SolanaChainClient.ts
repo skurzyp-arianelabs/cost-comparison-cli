@@ -33,27 +33,23 @@ import {
   percentAmount,
   signerIdentity,
   publicKey as getMetaplexPublicKey,
+  Umi,
 } from '@metaplex-foundation/umi';
 import BigNumber from 'bignumber.js';
 import bs58 from 'bs58';
-import { AbstractChainClient } from './abstract/AbstractChainClient';
+import { AbstractChainClient } from '../abstract/AbstractChainClient';
 import {
   ExtendedChain,
   SupportedChain,
   SupportedOperation,
   TransactionResult,
-} from '../types';
-import { ConfigService } from '../services/ConfigService/ConfigService';
-import { SolanaWalletService } from '../services/WalletServices/SolanaWalletService';
-import { calculateUsdCost } from '../utils/calculateUsdCost';
+} from '../../types';
+import { ConfigService } from '../../services/ConfigService/ConfigService';
+import { SolanaWalletService } from '../../services/WalletServices/SolanaWalletService';
+import { calculateUsdCost } from '../../utils/calculateUsdCost';
+import { DECIMALS, metadata } from './constants';
 
 const MINT_ACCOUNT_SIZE = 82; // Size (in bytes) of the Mint account required by SPL Token program
-
-const metadata = {
-  name: 'MyNFT',
-  symbol: 'MYNFT',
-  uri: 'https://ipfs.io/ipfs/QmTW9HWfb2wsQqEVJiixkQ73Nsfp2Rx4ESaDSiQ7ThwnFM',
-};
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
@@ -82,13 +78,89 @@ export class SolanaChainClient extends AbstractChainClient {
     }
   }
 
-  async createNativeFT(): Promise<TransactionResult> {
+  private async getPayerFromWalletService(): Promise<Keypair> {
     const solanaWalletService = this.walletService as SolanaWalletService;
-
     const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
+    return Keypair.fromSecretKey(
       Uint8Array.from(Buffer.from(privateKey, 'hex'))
     );
+  }
+
+  private initUmi(payer: Keypair) {
+    const umi = createUmi(this.connection.rpcEndpoint);
+    const umiWalletSigner = createSignerFromKeypair(
+      umi,
+      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
+    );
+    umi.use(signerIdentity(umiWalletSigner));
+    umi.use(mplTokenMetadata());
+    return umi;
+  }
+
+  private async getFeeAndUsdCost(signature: string) {
+    const txDetails = await this.connection.getParsedTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+    });
+    const fee = txDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.nativeCurrency.decimals
+    );
+    return { fee, usdCost };
+  }
+
+  private async associateTokenAccount(
+    payer: Keypair,
+    mint: PublicKey,
+    owner: PublicKey
+  ): Promise<{ ataAddress: PublicKey; signature: string }> {
+    const ataAddress = getAssociatedTokenAddressSync(
+      mint,
+      owner,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const ataInstruction = createAssociatedTokenAccountInstruction(
+      payer.publicKey,
+      ataAddress,
+      owner,
+      mint,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const tx = new Transaction().add(ataInstruction);
+
+    const signature = await sendAndConfirmTransaction(this.connection, tx, [
+      payer,
+    ]);
+    return { ataAddress, signature };
+  }
+
+  private createNFT(umi: Umi) {
+    const mintSigner = generateSigner(umi);
+    const splTokenProgram = umi.programs.getPublicKey(
+      TOKEN_PROGRAM_ID.toBase58()
+    );
+    const createTransaction = createV1(umi, {
+      mint: mintSigner,
+      authority: umi.identity,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      uri: metadata.uri,
+      sellerFeeBasisPoints: percentAmount(0),
+      splTokenProgram,
+    });
+    return { mintSigner, createTransaction, splTokenProgram };
+  }
+
+  async createNativeFT(): Promise<TransactionResult> {
+    const payer = await this.getPayerFromWalletService();
+
     const mintKeypair = Keypair.generate();
     const lamports = await getMinimumBalanceForRentExemptMint(this.connection);
 
@@ -137,49 +209,24 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async associateNativeFT(): Promise<TransactionResult> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-
-    const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
+    const payer = await this.getPayerFromWalletService();
 
     const mintAccount = await createMint(
       this.connection,
       payer,
       payer.publicKey, // mint authority
       null, // freeze authority
-      6
+      DECIMALS
     );
 
     const recipient = Keypair.generate();
-
-    const ata = getAssociatedTokenAddressSync(mintAccount, recipient.publicKey);
-
-    const associateIx = createAssociatedTokenAccountInstruction(
-      payer.publicKey,
-      ata,
-      recipient.publicKey,
-      mintAccount
-    );
-
-    const tx = new Transaction().add(associateIx);
-
-    const signature = await sendAndConfirmTransaction(this.connection, tx, [
+    const { signature } = await this.associateTokenAccount(
       payer,
-    ]);
-
-    const txDetails = await this.connection.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-    });
-
-    const fee = txDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
+      mintAccount,
+      recipient.publicKey
     );
+
+    const { fee, usdCost } = await this.getFeeAndUsdCost(signature);
 
     return {
       chain: SupportedChain.SOLANA,
@@ -195,14 +242,8 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async mintNativeFT(): Promise<TransactionResult> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-
-    const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
+    const payer = await this.getPayerFromWalletService();
     const mintKeypair = Keypair.generate();
-    const decimals = 6;
     const lamports = await getMinimumBalanceForRentExemptMint(this.connection);
 
     const createTx = new Transaction().add(
@@ -224,7 +265,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const mintTx = new Transaction().add(
       createInitializeMintInstruction(
         mintKeypair.publicKey,
-        decimals,
+        DECIMALS,
         payer.publicKey, // mint authority
         null, // freeze authority
         TOKEN_PROGRAM_ID
@@ -237,20 +278,7 @@ export class SolanaChainClient extends AbstractChainClient {
       [payer]
     );
 
-    const mintTxDetails = await this.connection.getParsedTransaction(
-      mintSignature,
-      {
-        maxSupportedTransactionVersion: 0,
-      }
-    );
-
-    const fee = mintTxDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
-    );
+    const { fee, usdCost } = await this.getFeeAndUsdCost(mintSignature);
 
     return {
       chain: SupportedChain.SOLANA,
@@ -266,19 +294,14 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async transferNativeFT(): Promise<TransactionResult> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-
-    const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
+    const payer = await this.getPayerFromWalletService();
 
     const mint = await createMint(
       this.connection,
       payer,
       payer.publicKey, // mint authority
       null, // freeze authority
-      6
+      DECIMALS
     );
 
     const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -314,17 +337,7 @@ export class SolanaChainClient extends AbstractChainClient {
       1_000_000
     );
 
-    const txDetails = await this.connection.getParsedTransaction(
-      transferSignature,
-      { maxSupportedTransactionVersion: 0 }
-    );
-    const fee = txDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
-    );
+    const { fee, usdCost } = await this.getFeeAndUsdCost(transferSignature);
 
     return {
       chain: SupportedChain.SOLANA,
@@ -354,50 +367,14 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async createNativeNFT(): Promise<TransactionResult> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-    const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
+    const payer = await this.getPayerFromWalletService();
+    const umi = this.initUmi(payer);
 
-    const umi = createUmi(this.connection.rpcEndpoint);
-    const umiWalletSigner = createSignerFromKeypair(
-      umi,
-      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
-    );
-    umi.use(signerIdentity(umiWalletSigner));
-    umi.use(mplTokenMetadata());
-
-    const mintSigner = generateSigner(umi);
-    const splTokenProgram = umi.programs.getPublicKey(
-      TOKEN_PROGRAM_ID.toBase58()
-    );
-
-    const transaction = createV1(umi, {
-      mint: mintSigner,
-      authority: umi.identity,
-      name: metadata.name,
-      symbol: metadata.symbol,
-      uri: metadata.uri,
-      sellerFeeBasisPoints: percentAmount(0),
-      splTokenProgram,
-    });
-
-    const result = await transaction.sendAndConfirm(umi);
+    const { createTransaction } = this.createNFT(umi);
+    const result = await createTransaction.sendAndConfirm(umi);
     const signatureBase58 = bs58.encode(result.signature as Uint8Array);
 
-    const txDetails = await this.connection.getParsedTransaction(
-      signatureBase58,
-      { maxSupportedTransactionVersion: 0 }
-    );
-
-    const fee = txDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
-    );
+    const { fee, usdCost } = await this.getFeeAndUsdCost(signatureBase58);
 
     return {
       chain: SupportedChain.SOLANA,
@@ -413,70 +390,19 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async associateNativeNFT(): Promise<TransactionResult> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-    const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
+    const payer = await this.getPayerFromWalletService();
+    const umi = this.initUmi(payer);
 
-    const umi = createUmi(this.connection.rpcEndpoint);
-    const umiWalletSigner = createSignerFromKeypair(
-      umi,
-      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
-    );
-    umi.use(signerIdentity(umiWalletSigner));
-    umi.use(mplTokenMetadata());
+    const { mintSigner, createTransaction } = this.createNFT(umi);
+    await createTransaction.sendAndConfirm(umi);
 
-    const mintSigner = generateSigner(umi);
-    const splTokenProgram = umi.programs.getPublicKey(
-      TOKEN_PROGRAM_ID.toBase58()
-    );
-
-    await createV1(umi, {
-      mint: mintSigner,
-      authority: umi.identity,
-      name: metadata.name,
-      symbol: metadata.symbol,
-      uri: metadata.uri,
-      sellerFeeBasisPoints: percentAmount(0),
-      splTokenProgram,
-    }).sendAndConfirm(umi);
-
-    const ataAddress = getAssociatedTokenAddressSync(
-      new PublicKey(mintSigner.publicKey),
-      payer.publicKey,
-      false,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-
-    const ataInstruction = createAssociatedTokenAccountInstruction(
-      payer.publicKey,
-      ataAddress,
-      payer.publicKey,
-      new PublicKey(mintSigner.publicKey),
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-
-    const tx = new Transaction().add(ataInstruction);
-
-    const signature = await sendAndConfirmTransaction(this.connection, tx, [
+    const { signature } = await this.associateTokenAccount(
       payer,
-    ]);
-
-    const txDetails = await this.connection.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-    });
-
-    const fee = txDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
+      new PublicKey(mintSigner.publicKey),
+      payer.publicKey
     );
+
+    const { fee, usdCost } = await this.getFeeAndUsdCost(signature);
 
     return {
       chain: SupportedChain.SOLANA,
@@ -492,58 +418,17 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async mintNativeNFT(): Promise<TransactionResult> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-    const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
+    const payer = await this.getPayerFromWalletService();
+    const umi = this.initUmi(payer);
 
-    const umi = createUmi(this.connection.rpcEndpoint);
-    const umiWalletSigner = createSignerFromKeypair(
-      umi,
-      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
-    );
-    umi.use(signerIdentity(umiWalletSigner));
-    umi.use(mplTokenMetadata());
+    const { mintSigner, createTransaction, splTokenProgram } =
+      this.createNFT(umi);
+    await createTransaction.sendAndConfirm(umi);
 
-    const umiMint = generateSigner(umi);
-    const mint = Keypair.fromSecretKey(umiMint.secretKey);
+    const mintPublicKey = new PublicKey(mintSigner.publicKey);
+    const mint = Keypair.fromSecretKey(mintSigner.secretKey);
 
-    const mintPublicKey = new PublicKey(umiMint.publicKey);
-
-    const splTokenProgram = umi.programs.getPublicKey(
-      TOKEN_PROGRAM_ID.toBase58()
-    );
-
-    await createV1(umi, {
-      mint: umiMint,
-      authority: umi.identity,
-      name: metadata.name,
-      symbol: metadata.symbol,
-      uri: metadata.uri,
-      sellerFeeBasisPoints: percentAmount(0),
-      splTokenProgram,
-    }).sendAndConfirm(umi);
-
-    const ataAddress = getAssociatedTokenAddressSync(
-      mintPublicKey,
-      payer.publicKey,
-      false,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-
-    const ataInstruction = createAssociatedTokenAccountInstruction(
-      payer.publicKey,
-      ataAddress,
-      payer.publicKey,
-      mintPublicKey,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-
-    const ataTx = new Transaction().add(ataInstruction);
-    await sendAndConfirmTransaction(this.connection, ataTx, [payer]);
+    await this.associateTokenAccount(payer, mintPublicKey, payer.publicKey);
 
     const mintTransaction = mintV1(umi, {
       mint: getMetaplexPublicKey(mint.publicKey),
@@ -559,21 +444,7 @@ export class SolanaChainClient extends AbstractChainClient {
     });
     const signatureBase58 = bs58.encode(result.signature as Uint8Array);
 
-    const txDetails = await this.connection.getParsedTransaction(
-      signatureBase58,
-      {
-        maxSupportedTransactionVersion: 0,
-      }
-    );
-
-    const fee = txDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
-    );
+    const { fee, usdCost } = await this.getFeeAndUsdCost(signatureBase58);
 
     return {
       chain: SupportedChain.SOLANA,
@@ -589,57 +460,22 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async transferNativeNFT(): Promise<TransactionResult> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-    const { privateKey } = await solanaWalletService.createAccount();
-    const payer = Keypair.fromSecretKey(
-      Uint8Array.from(Buffer.from(privateKey, 'hex'))
-    );
+    const payer = await this.getPayerFromWalletService();
+    const umi = this.initUmi(payer);
 
-    const umi = createUmi(this.connection.rpcEndpoint);
-    const umiWalletSigner = createSignerFromKeypair(
-      umi,
-      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
-    );
-    umi.use(signerIdentity(umiWalletSigner));
-    umi.use(mplTokenMetadata());
+    const { mintSigner, createTransaction, splTokenProgram } =
+      this.createNFT(umi);
+    await createTransaction.sendAndConfirm(umi);
 
-    const mintSigner = generateSigner(umi);
     const mintPublicKey = new PublicKey(mintSigner.publicKey);
-    const splTokenProgram = umi.programs.getPublicKey(
-      TOKEN_PROGRAM_ID.toBase58()
-    );
-
-    await createV1(umi, {
-      mint: mintSigner,
-      authority: umi.identity,
-      name: metadata.name,
-      symbol: metadata.symbol,
-      uri: metadata.uri,
-      sellerFeeBasisPoints: percentAmount(0),
-      splTokenProgram,
-    }).sendAndConfirm(umi);
 
     const recipientKeypair = Keypair.generate();
 
-    const ataAddress = getAssociatedTokenAddressSync(
+    const { ataAddress } = await this.associateTokenAccount(
+      payer,
       mintPublicKey,
-      recipientKeypair.publicKey,
-      false,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
+      recipientKeypair.publicKey
     );
-
-    const ataIx = createAssociatedTokenAccountInstruction(
-      payer.publicKey,
-      ataAddress,
-      recipientKeypair.publicKey,
-      mintPublicKey,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-
-    const ataTx = new Transaction().add(ataIx);
-    await sendAndConfirmTransaction(this.connection, ataTx, [payer]);
 
     await mintV1(umi, {
       mint: getMetaplexPublicKey(mintSigner.publicKey),
@@ -676,20 +512,7 @@ export class SolanaChainClient extends AbstractChainClient {
       [payer]
     );
 
-    const txDetails = await this.connection.getParsedTransaction(
-      transferSignature,
-      {
-        maxSupportedTransactionVersion: 0,
-      }
-    );
-
-    const fee = txDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
-    );
+    const { fee, usdCost } = await this.getFeeAndUsdCost(transferSignature);
 
     return {
       chain: SupportedChain.SOLANA,

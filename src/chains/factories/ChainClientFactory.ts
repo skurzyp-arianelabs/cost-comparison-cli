@@ -2,7 +2,7 @@ import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { SupportedChain } from '../../types';
 import { IChainClient } from '../IChainClient';
 import { HederaChainClient } from '../Hedera/HederaChainClient';
-import { SolanaChainClient } from '../SolanaChainClient';
+import { SolanaChainClient } from '../Solana/SolanaChainClient';
 
 export class ChainClientFactory {
   private configService: ConfigService;
