@@ -1,9 +1,10 @@
-import { AbstractChainClient } from "./abstract/AbstractChainClient";
-import { ChainConfig, TransactionResult } from "../types";
-import { ConfigService } from "../services/ConfigService";
+import { AbstractChainClient } from './abstract/AbstractChainClient';
+import { TransactionResult } from '../types';
+import { ConfigService } from '../services/ConfigService/ConfigService';
+import { Chain } from 'viem';
 
 export class SolanaChainClient extends AbstractChainClient {
-  constructor(chainConfig: ChainConfig, configService: ConfigService) {
+  constructor(chainConfig: Chain, configService: ConfigService) {
     super(chainConfig, configService);
     // create instance of wallet
   }

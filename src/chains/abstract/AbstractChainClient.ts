@@ -1,22 +1,29 @@
-import { ChainConfig, SupportedOperation, TransactionResult, WalletCredentials } from "../../types";
-import { IChainClient } from "../IChainClient";
-import { ConfigService } from "../../services/ConfigService";
+import {
+  ExtendedChain,
+  SupportedChain,
+  SupportedOperation,
+  TransactionResult,
+} from '../../types';
+import { IChainClient } from '../IChainClient';
+import { ConfigService } from '../../services/ConfigService/ConfigService';
+import { CoinGeckoApiService } from '../../services/ApiService/CoinGeckoApiService';
+import { AbstractWalletService } from '../../services/WalletServices/AbstractWalletService';
 
 export abstract class AbstractChainClient implements IChainClient {
-  protected chainConfig: ChainConfig;
-  protected credentials: WalletCredentials;
+  protected chainConfig: ExtendedChain;
   protected configManager: ConfigService;
+  protected coinGeckoApiService: CoinGeckoApiService;
+  protected walletService: AbstractWalletService;
 
-  constructor(chainConfig: ChainConfig, configService: ConfigService) {
+  constructor(
+    chainConfig: ExtendedChain,
+    configService: ConfigService,
+    walletService: AbstractWalletService
+  ) {
     this.chainConfig = chainConfig;
     this.configManager = configService;
-    this.credentials = configService.getWalletCredentials(chainConfig.id);
-
-    if (!this.credentials.privateKey) {
-      throw new Error(
-        `No wallet credentials found for ${chainConfig.name}. Please set WALLET_${chainConfig.id.toUpperCase()}_PRIVATE_KEY in your .env file`
-      );
-    }
+    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.walletService = walletService;
   }
 
   // Native Fungible Token Operations
@@ -36,7 +43,31 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
-  getChainInfo(): ChainConfig {
+  async createERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferERC20_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async createERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferERC20_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  getChainInfo(): ExtendedChain {
     return this.chainConfig;
   }
 
@@ -44,7 +75,9 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
-  async executeOperation(operation: SupportedOperation): Promise<TransactionResult> {
+  async executeOperation(
+    operation: SupportedOperation
+  ): Promise<TransactionResult> {
     try {
       switch (operation) {
         case SupportedOperation.CREATE_NATIVE_FT:
@@ -55,17 +88,33 @@ export abstract class AbstractChainClient implements IChainClient {
           return await this.mintNativeFT();
         case SupportedOperation.TRANSFER_NATIVE_FT:
           return await this.transferNativeFT();
+        case SupportedOperation.CREATE_ERC20_SDK:
+          return await this.createERC20_SDK();
+        case SupportedOperation.MINT_ERC20_SDK:
+          return await this.mintERC20_SDK();
+        case SupportedOperation.TRANSFER_ERC20_SDK:
+          return await this.transferERC20_SDK();
+        case SupportedOperation.CREATE_ERC20_HARDHAT:
+          return await this.createERC20_RPC();
+        case SupportedOperation.MINT_ERC20_HARDHAT:
+          return await this.mintERC20_RPC();
+        case SupportedOperation.TRANSFER_ERC20_HARDHAT:
+          return await this.transferERC20_RPC();
         default:
-          throw new Error(`executeOperation: Operation '${operation}' is not implemented or supported.`);
+          throw new Error(
+            `executeOperation: Operation '${operation}' is not implemented or supported.`
+          );
       }
     } catch (error: any) {
-      console.error(`Error during operation '${operation}': ${error.message || error}`);
+      console.error(
+        `Error during operation '${operation}': ${error.message || error}`
+      );
       return {
         status: 'failed',
         error: error.message || error,
         timestamp: Date.now().toLocaleString(),
         operation,
-        chain: this.chainConfig.name
+        chain: this.chainConfig.name as SupportedChain,
       };
     }
   }
