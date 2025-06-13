@@ -1,21 +1,22 @@
 import {
-  ChainConfig,
+  ExtendedChain,
+  SupportedChain,
   SupportedOperation,
   TransactionResult,
 } from '../../types';
 import { IChainClient } from '../IChainClient';
-import { ConfigService } from '../../services/ConfigService';
+import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { CoinGeckoApiService } from '../../services/ApiService/CoinGeckoApiService';
 import { AbstractWalletService } from '../../services/WalletServices/AbstractWalletService';
 
 export abstract class AbstractChainClient implements IChainClient {
-  protected chainConfig: ChainConfig;
+  protected chainConfig: ExtendedChain;
   protected configManager: ConfigService;
   protected coinGeckoApiService: CoinGeckoApiService;
   protected walletService: AbstractWalletService;
 
   constructor(
-    chainConfig: ChainConfig,
+    chainConfig: ExtendedChain,
     configService: ConfigService,
     walletService: AbstractWalletService
   ) {
@@ -82,7 +83,7 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
-  getChainInfo(): ChainConfig {
+  getChainInfo(): ExtendedChain {
     return this.chainConfig;
   }
 
@@ -137,7 +138,7 @@ export abstract class AbstractChainClient implements IChainClient {
         error: error.message || error,
         timestamp: Date.now().toLocaleString(),
         operation,
-        chain: this.chainConfig.type,
+        chain: this.chainConfig.name as SupportedChain,
       };
     }
   }

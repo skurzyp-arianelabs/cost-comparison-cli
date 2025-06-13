@@ -1,4 +1,4 @@
-import { ConfigService } from '../ConfigService';
+import { ConfigService } from '../ConfigService/ConfigService';
 import { AccountData, NetworkType, SupportedChain } from '../../types';
 
 export abstract class AbstractWalletService {
@@ -7,7 +7,6 @@ export abstract class AbstractWalletService {
 
   constructor(configService: ConfigService) {
     this.configService = configService;
-    this.client = this.initClient();
   }
 
   protected abstract initClient(): any;

@@ -1,13 +1,22 @@
 import { Connection, Keypair, Commitment } from '@solana/web3.js';
 import { AbstractWalletService } from './AbstractWalletService';
-import { ConfigService } from '../ConfigService';
-import { AccountData, SupportedChain } from '../../types';
+import { ConfigService } from '../ConfigService/ConfigService';
+import {
+  AccountData,
+  ExtendedChain,
+  NetworkType,
+  SupportedChain,
+} from '../../types';
 
 export class SolanaWalletService extends AbstractWalletService {
   private connection: Connection;
+  private readonly supportedChain: SupportedChain;
+  private readonly chain: ExtendedChain;
 
   constructor(configService: ConfigService) {
     super(configService);
+    this.supportedChain = SupportedChain.SOLANA;
+    this.chain = this.configService.getChainConfig(this.supportedChain);
     this.connection = this.initClient();
   }
 
@@ -48,11 +57,19 @@ export class SolanaWalletService extends AbstractWalletService {
     return SupportedChain.SOLANA;
   }
 
-  private getRpcUrl(): string {
-    const rpcFromEnv = process.env.SOLANA_RPC_URL;
-    if (!rpcFromEnv) {
-      throw new Error('Missing SOLANA_RPC_URL in .env');
+  private getRpcUrl(networkType?: NetworkType): string {
+    const network =
+      networkType ||
+      this.configService.getWalletCredentials(this.supportedChain).networkType!;
+
+    const chainConfig = this.chain;
+
+    if (chainConfig.rpcUrls.default.http[0]) {
+      return chainConfig.rpcUrls.default.http[0];
     }
-    return rpcFromEnv;
+
+    throw new Error(
+      `No RPC URL configured for ${this.supportedChain} on ${network}`
+    );
   }
 }

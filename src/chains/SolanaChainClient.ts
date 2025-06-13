@@ -21,7 +21,6 @@ import {
 } from '@solana/spl-token';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import {
-  createAndMint,
   createV1,
   mintV1,
   mplTokenMetadata,
@@ -38,12 +37,12 @@ import BigNumber from 'bignumber.js';
 import bs58 from 'bs58';
 import { AbstractChainClient } from './abstract/AbstractChainClient';
 import {
-  ChainConfig,
+  ExtendedChain,
   SupportedChain,
   SupportedOperation,
   TransactionResult,
 } from '../types';
-import { ConfigService } from '../services/ConfigService';
+import { ConfigService } from '../services/ConfigService/ConfigService';
 import { SolanaWalletService } from '../services/WalletServices/SolanaWalletService';
 import { calculateUsdCost } from '../utils/calculateUsdCost';
 
@@ -59,7 +58,7 @@ export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
   private solPriceUSD!: BigNumber;
 
-  constructor(chainConfig: ChainConfig, configService: ConfigService) {
+  constructor(chainConfig: ExtendedChain, configService: ConfigService) {
     const solanaWalletService = new SolanaWalletService(configService);
     super(chainConfig, configService, solanaWalletService);
     this.connection = solanaWalletService.getClient();
@@ -120,7 +119,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
-      this.chainConfig.decimals
+      this.chainConfig.nativeCurrency.decimals
     );
 
     return {
@@ -130,7 +129,7 @@ export class SolanaChainClient extends AbstractChainClient {
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       timestamp: Date.now().toLocaleString(),
       status: 'success',
     };
@@ -178,7 +177,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
-      this.chainConfig.decimals
+      this.chainConfig.nativeCurrency.decimals
     );
 
     return {
@@ -188,7 +187,7 @@ export class SolanaChainClient extends AbstractChainClient {
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       timestamp: Date.now().toLocaleString(),
       status: 'success',
     };
@@ -249,7 +248,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
-      this.chainConfig.decimals
+      this.chainConfig.nativeCurrency.decimals
     );
 
     return {
@@ -259,7 +258,7 @@ export class SolanaChainClient extends AbstractChainClient {
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       timestamp: Date.now().toLocaleString(),
       status: 'success',
     };
@@ -323,7 +322,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
-      this.chainConfig.decimals
+      this.chainConfig.nativeCurrency.decimals
     );
 
     return {
@@ -332,7 +331,7 @@ export class SolanaChainClient extends AbstractChainClient {
       transactionHash: transferSignature,
       gasUsed: fee?.toString() ?? '',
       usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       timestamp: Date.now().toLocaleString(),
       status: 'success',
     };
@@ -396,7 +395,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
-      this.chainConfig.decimals
+      this.chainConfig.nativeCurrency.decimals
     );
 
     return {
@@ -406,7 +405,7 @@ export class SolanaChainClient extends AbstractChainClient {
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       timestamp: Date.now().toLocaleString(),
       status: 'success',
     };
@@ -475,7 +474,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
-      this.chainConfig.decimals
+      this.chainConfig.nativeCurrency.decimals
     );
 
     return {
@@ -485,7 +484,7 @@ export class SolanaChainClient extends AbstractChainClient {
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       timestamp: Date.now().toLocaleString(),
       status: 'success',
     };
@@ -572,7 +571,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
-      this.chainConfig.decimals
+      this.chainConfig.nativeCurrency.decimals
     );
 
     return {
@@ -582,7 +581,7 @@ export class SolanaChainClient extends AbstractChainClient {
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       timestamp: Date.now().toLocaleString(),
       status: 'success',
     };

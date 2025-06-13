@@ -1,5 +1,5 @@
 import { AbstractWalletService } from "./AbstractWalletService";
-import { ConfigService } from "../ConfigService";
+import { ConfigService } from "../ConfigService/ConfigService";
 import { AccountCreateTransaction, AccountId, Client, Hbar, PrivateKey } from "@hashgraph/sdk";
 import { AccountData, NetworkType, SupportedChain } from "../../types";
 
@@ -8,7 +8,7 @@ export class HederaWalletService extends AbstractWalletService {
 
   constructor(configService: ConfigService) {
     super(configService);
-    this.hederaClient = this.client as Client;
+    this.hederaClient = this.initClient();
   }
 
   protected initClient(): Client {
@@ -25,6 +25,7 @@ export class HederaWalletService extends AbstractWalletService {
 
   public async createAccountAndReturnClient(autoAssociation?: number): Promise<Client> {
     const accountData = await this.createAccount(autoAssociation);
+
     return this.createClient(
       this.configService.getWalletCredentials(this.getSupportedChain()).networkType!,
       accountData.accountAddress,
@@ -33,7 +34,7 @@ export class HederaWalletService extends AbstractWalletService {
   }
 
   public async createAccount(autoAssociation?: number): Promise<AccountData> {
-    const accountPrivateKey = PrivateKey.generateECDSA();
+    const accountPrivateKey = PrivateKey.generateED25519();
     const accountPublicKey = accountPrivateKey.publicKey;
 
     const tx = new AccountCreateTransaction()
@@ -54,7 +55,6 @@ export class HederaWalletService extends AbstractWalletService {
       publicKey: accountPublicKey.toStringRaw(),
     };
   }
-
 
   protected createClient(networkType: NetworkType, hederaAddress: string, hederaPrivateKey: string): Client {
     let client: Client;

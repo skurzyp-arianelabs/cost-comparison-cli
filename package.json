@@ -6,7 +6,8 @@
   "main": "index.ts",
   "scripts": {
     "start": "tsx src/index.ts",
-    "format": "prettier --write 'src/**/*.{ts,tsx,js,json,md}'"
+    "format": "prettier --write 'src/**/*.{ts,tsx,js,json,md}'",
+    "start-with-args": "tsx src/index.ts --network=testnet --chains=hedera --operations=deploy-erc20-hardhat"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +25,7 @@
     "@metaplex-foundation/umi-bundle-defaults": "^1.2.0",
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.2",
+    "axios": "^1.9.0",
     "bignumber.js": "^9.3.0",
     "bs58": "^6.0.0",
     "chalk": "^5.4.1",
@@ -38,6 +40,7 @@
     "remeda": "^2.21.2",
     "rlp": "^3.0.0",
     "simple-statistics": "^7.8.8",
+    "viem": "^2.31.0",
     "winston": "^3.17.0",
     "zod": "^3.25.57"
   }
