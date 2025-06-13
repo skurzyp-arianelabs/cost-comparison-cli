@@ -39,6 +39,7 @@ export interface ChainConfig {
   networkId?: string;
   nativeCurrency: string;
   explorerUrl: string;
+  decimals: number;
 }
 
 // TODO: align with the required operations
@@ -82,7 +83,7 @@ export enum SupportedOperation {
 export enum NetworkType {
   TESTNET = 'testnet',
   MAINNET = 'mainnet',
-  PREVIEWNET = 'previewnet'
+  PREVIEWNET = 'previewnet',
 }
 
 export type AccountData = {

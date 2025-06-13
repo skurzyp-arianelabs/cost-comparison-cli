@@ -1,8 +1,8 @@
-import { ConfigService } from "../../services/ConfigService/ConfigService";
-import { SupportedChain } from "../../types";
-import { IChainClient } from "../IChainClient";
-import { HederaChainClient } from "../Hedera/HederaChainClient";
-import { SolanaChainClient } from "../SolanaChainClient";
+import { ConfigService } from '../../services/ConfigService/ConfigService';
+import { SupportedChain } from '../../types';
+import { IChainClient } from '../IChainClient';
+import { HederaChainClient } from '../Hedera/HederaChainClient';
+import { SolanaChainClient } from '../Solana/SolanaChainClient';
 
 export class ChainClientFactory {
   private configService: ConfigService;
@@ -23,7 +23,9 @@ export class ChainClientFactory {
       case SupportedChain.SOLANA:
         return new SolanaChainClient(config, this.configService);
       default:
-        throw new Error(`No client implementation for chain type: ${config.name}`);
+        throw new Error(
+          `No client implementation for chain type: ${config.name}`
+        );
     }
   }
 }
