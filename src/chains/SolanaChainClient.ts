@@ -18,6 +18,7 @@ import {
   getOrCreateAssociatedTokenAccount,
   mintTo,
   transfer,
+  createTransferCheckedInstruction,
 } from '@solana/spl-token';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import {
@@ -588,6 +589,118 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async transferNativeNFT(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
+    const solanaWalletService = this.walletService as SolanaWalletService;
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
+
+    const umi = createUmi(this.connection.rpcEndpoint);
+    const umiWalletSigner = createSignerFromKeypair(
+      umi,
+      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
+    );
+    umi.use(signerIdentity(umiWalletSigner));
+    umi.use(mplTokenMetadata());
+
+    const mintSigner = generateSigner(umi);
+    const mintPublicKey = new PublicKey(mintSigner.publicKey);
+    const splTokenProgram = umi.programs.getPublicKey(
+      TOKEN_PROGRAM_ID.toBase58()
+    );
+
+    await createV1(umi, {
+      mint: mintSigner,
+      authority: umi.identity,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      uri: metadata.uri,
+      sellerFeeBasisPoints: percentAmount(0),
+      splTokenProgram,
+    }).sendAndConfirm(umi);
+
+    const recipientKeypair = Keypair.generate();
+
+    const ataAddress = getAssociatedTokenAddressSync(
+      mintPublicKey,
+      recipientKeypair.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const ataIx = createAssociatedTokenAccountInstruction(
+      payer.publicKey,
+      ataAddress,
+      recipientKeypair.publicKey,
+      mintPublicKey,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const ataTx = new Transaction().add(ataIx);
+    await sendAndConfirmTransaction(this.connection, ataTx, [payer]);
+
+    await mintV1(umi, {
+      mint: getMetaplexPublicKey(mintSigner.publicKey),
+      authority: umi.identity,
+      amount: 1,
+      tokenOwner: getMetaplexPublicKey(payer.publicKey.toBase58()),
+      tokenStandard: TokenStandard.NonFungible,
+      splTokenProgram,
+    }).sendAndConfirm(umi, { send: { skipPreflight: true } });
+
+    const senderAta = getAssociatedTokenAddressSync(
+      mintPublicKey,
+      payer.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const transfer = createTransferCheckedInstruction(
+      senderAta,
+      mintPublicKey,
+      ataAddress,
+      payer.publicKey,
+      1, // amount
+      0, // decimals
+      [], // no additional signers
+      TOKEN_PROGRAM_ID
+    );
+
+    const transferTx = new Transaction().add(transfer);
+    const transferSignature = await sendAndConfirmTransaction(
+      this.connection,
+      transferTx,
+      [payer]
+    );
+
+    const txDetails = await this.connection.getParsedTransaction(
+      transferSignature,
+      {
+        maxSupportedTransactionVersion: 0,
+      }
+    );
+
+    const fee = txDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.nativeCurrency.decimals
+    );
+
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.TRANSFER_NATIVE_NFT,
+      transactionHash: transferSignature,
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
   }
 }
