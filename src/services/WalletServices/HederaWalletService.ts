@@ -34,7 +34,7 @@ export class HederaWalletService extends AbstractWalletService {
   }
 
   public async createAccount(autoAssociation?: number): Promise<AccountData> {
-    const accountPrivateKey = PrivateKey.generateED25519();
+    const accountPrivateKey = PrivateKey.generateECDSA();
     const accountPublicKey = accountPrivateKey.publicKey;
 
     const tx = new AccountCreateTransaction()

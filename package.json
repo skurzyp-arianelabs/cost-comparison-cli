@@ -7,7 +7,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "format": "prettier --write 'src/**/*.{ts,tsx,js,json,md}'",
-    "start-with-args": "tsx src/index.ts --network=testnet --chains=hedera --operations=deploy-erc20-hardhat"
+    "start-with-args": "tsx src/index.ts --network=testnet --chains=hedera --operations=transfer-native-nft"
   },
   "keywords": [],
   "author": "",
