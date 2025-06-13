@@ -83,6 +83,30 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
+  async createERC721_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintERC721_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferERC721_SDK(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferERC721_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintERC721_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async createERC721_RPC(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
   getChainInfo(): ExtendedChain {
     return this.chainConfig;
   }
@@ -116,6 +140,18 @@ export abstract class AbstractChainClient implements IChainClient {
           return await this.mintERC20_RPC();
         case SupportedOperation.TRANSFER_ERC20_HARDHAT:
           return await this.transferERC20_RPC();
+        case SupportedOperation.CREATE_ERC721_SDK:
+          return await this.createERC721_SDK();
+        case SupportedOperation.MINT_ERC721_SDK:
+          return await this.mintERC721_SDK();
+        case SupportedOperation.TRANSFER_ERC721_SDK:
+          return await this.transferERC721_SDK();
+        case SupportedOperation.CREATE_ERC721_HARDHAT:
+          return await this.createERC721_RPC();
+        case SupportedOperation.MINT_ERC721_HARDHAT:
+          return await this.mintERC721_RPC();
+        case SupportedOperation.TRANSFER_ERC721_HARDHAT:
+          return await this.transferERC721_RPC();
         case SupportedOperation.CREATE_NATIVE_NFT:
           return await this.createNativeNFT();
         case SupportedOperation.ASSOCIATE_NATIVE_NFT:

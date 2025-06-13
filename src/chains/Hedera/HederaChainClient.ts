@@ -27,10 +27,17 @@ import {
 import { BigNumber } from 'bignumber.js';
 import { HederaWalletService } from '../../services/WalletServices/HederaWalletService';
 import erc20Compiled from './contracts/ERC-20.json';
+import erc721Compiled from './contracts/ERC-721.json';
 import { HederaMirrorNodeService } from '../../services/ApiService/HederaMirrorNodeService';
 import { getEvmCompatibleAddress, wait } from './hederaUtils';
 import { EvmWalletService } from '../../services/WalletServices/EvmWalletService';
-import { Abi, formatUnits, PublicClient, WalletClient } from 'viem';
+import {
+  Abi,
+  formatUnits,
+  getContract, parseUnits,
+  PublicClient,
+  WalletClient,
+} from 'viem';
 
 export class HederaChainClient extends AbstractChainClient {
   private readonly hederaClient: Client;
@@ -716,10 +723,483 @@ export class HederaChainClient extends AbstractChainClient {
   }
 
   async mintERC20_RPC(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
+    const bytecode = erc20Compiled.bytecode;
+    const initialOwner = this.viemClient.account!.address;
+
+    const deployHash = await this.viemClient.deployContract({
+      abi: erc20Compiled.abi as Abi,
+      bytecode: bytecode as `0x${string}`,
+      account: this.viemClient.account!,
+      args: [initialOwner],
+      chain: this.viemClient.chain,
+    });
+
+    const receipt = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: deployHash,
+    });
+
+    const contract = getContract({
+      address: receipt.contractAddress!,
+      abi: erc20Compiled.abi as Abi,
+      client: this.viemClient,
+    });
+
+    const mintAmount = parseUnits("100", 18); // 100 tokens
+    // @ts-ignore
+    const mintTxHash = await contract.write.mint([initialOwner, mintAmount])!;
+
+    const mintReceipt = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: mintTxHash,
+    });
+
+    const totalCostTinybar = mintReceipt.gasUsed * mintReceipt.effectiveGasPrice;
+    const totalCostHbar = formatUnits(BigInt(totalCostTinybar), 18);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+
+    const usdCost = BigNumber(totalCostHbar).multipliedBy(hbarUSDPrice).toString();
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.MINT_ERC20_HARDHAT,
+      transactionHash: mintTxHash,
+      gasUsed: mintReceipt.gasUsed.toString(),
+      totalCost: totalCostHbar,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost,
+      timestamp: Date.now().toString(),
+      status: mintReceipt.status === 'success' ? 'success' : 'failed',
+      blockNumber: mintReceipt.blockNumber.toString(),
+      gasPrice: mintReceipt.effectiveGasPrice.toString(),
+    };
   }
 
   async transferERC20_RPC(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
+    const bytecode = erc20Compiled.bytecode;
+    const recipient = (await this.evmWalletService.createAccount()).accountAddress;
+    console.log(`recipient: ${JSON.stringify(recipient)}`);
+    const initialOwner = this.viemClient.account!.address;
+
+    const deployHash = await this.viemClient.deployContract({
+      abi: erc20Compiled.abi as Abi,
+      bytecode: bytecode as `0x${string}`,
+      account: this.viemClient.account!,
+      args: [initialOwner],
+      chain: this.viemClient.chain,
+    });
+
+    const receipt1 = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: deployHash,
+    });
+
+    const contract = getContract({
+      address: receipt1.contractAddress!,
+      abi: erc20Compiled.abi as Abi,
+      client: this.viemClient,
+    });
+
+    const mintAmount = parseUnits("100", 18); // 100 tokens
+    // @ts-ignore
+    const mintTxHash = await contract.write.mint([initialOwner, mintAmount])!;
+
+    await this.viemPublicClient.waitForTransactionReceipt({
+      hash: mintTxHash,
+    });
+
+    const transferAmount = parseUnits("10", 18); // 10 tokens
+    // @ts-ignore
+    const transferHash = await contract.write.transfer([recipient, transferAmount]);
+
+    const receipt2 = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: transferHash,
+    });
+
+    const totalCostTinybar = receipt2.gasUsed * receipt2.effectiveGasPrice;
+    const totalCostHbar = formatUnits(BigInt(totalCostTinybar), 18);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+
+    const usdCost = BigNumber(totalCostHbar).multipliedBy(hbarUSDPrice).toString();
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.TRANSFER_ERC20_HARDHAT,
+      transactionHash: transferHash,
+      gasUsed: receipt2.gasUsed.toString(),
+      totalCost: totalCostHbar,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost,
+      timestamp: Date.now().toString(),
+      status: receipt2.status === 'success' ? 'success' : 'failed',
+      blockNumber: receipt2.blockNumber.toString(),
+      gasPrice: receipt2.effectiveGasPrice.toString(),
+    };
+  }
+
+  /**
+   * key: deploy-erc721-sdk
+   * 1. Load bytecode of compiled erc-721 smart contract
+   * 2. Deploy ERC721 contract with use of viem
+   */
+  async createERC721_RPC(): Promise<TransactionResult> {
+    const bytecode = erc721Compiled.bytecode;
+
+    const initialOwner = this.viemClient.account!.address;
+
+    const deployHash = await this.viemClient.deployContract({
+      abi: erc721Compiled.abi as Abi,
+      bytecode: bytecode as `0x${string}`,
+      account: this.viemClient.account!,
+      args: [initialOwner],
+      chain: this.viemClient.chain,
+    });
+
+    const receipt = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: deployHash,
+    });
+
+    const gasUsed = receipt.gasUsed;
+    const totalCostTinybar = gasUsed * receipt.effectiveGasPrice;
+    const totalCostHbar = formatUnits(BigInt(totalCostTinybar), 18);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.CREATE_ERC721_HARDHAT,
+      transactionHash: deployHash,
+      gasUsed: gasUsed.toString(),
+      totalCost: totalCostHbar,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: BigNumber(totalCostHbar).multipliedBy(hbarPriceBN).toString(),
+      timestamp: Date.now().toString(),
+      status: receipt.status === 'success' ? 'success' : 'failed',
+      blockNumber: receipt.blockNumber.toString(),
+      gasPrice: receipt.effectiveGasPrice.toString(),
+    };
+  }
+
+  async mintERC721_RPC(): Promise<TransactionResult> {
+    const bytecode = erc721Compiled.bytecode;
+    const initialOwner = this.viemClient.account!.address;
+
+    const deployHash = await this.viemClient.deployContract({
+      abi: erc721Compiled.abi as Abi,
+      bytecode: bytecode as `0x${string}`,
+      account: this.viemClient.account!,
+      args: [initialOwner],
+      chain: this.viemClient.chain,
+    });
+
+    const receipt = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: deployHash,
+    });
+
+    const contract = getContract({
+      address: receipt.contractAddress!,
+      abi: erc721Compiled.abi as Abi,
+      client: this.viemClient,
+    });
+
+    // Mint NFT to the initial owner
+    // @ts-ignore
+    const mintTxHash = await contract.write.safeMint([initialOwner])!;
+
+    const mintReceipt = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: mintTxHash,
+    });
+
+    const totalCostTinybar = mintReceipt.gasUsed * mintReceipt.effectiveGasPrice;
+    const totalCostHbar = formatUnits(BigInt(totalCostTinybar), 18);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+
+    const usdCost = BigNumber(totalCostHbar).multipliedBy(hbarUSDPrice).toString();
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.MINT_ERC721_HARDHAT,
+      transactionHash: mintTxHash,
+      gasUsed: mintReceipt.gasUsed.toString(),
+      totalCost: totalCostHbar,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost,
+      timestamp: Date.now().toString(),
+      status: mintReceipt.status === 'success' ? 'success' : 'failed',
+      blockNumber: mintReceipt.blockNumber.toString(),
+      gasPrice: mintReceipt.effectiveGasPrice.toString(),
+    };
+  }
+
+  async transferERC721_RPC(): Promise<TransactionResult> {
+    const bytecode = erc721Compiled.bytecode;
+    const recipient = (await this.evmWalletService.createAccount()).accountAddress;
+    console.log(`recipient: ${JSON.stringify(recipient)}`);
+    const initialOwner = this.viemClient.account!.address;
+
+    const deployHash = await this.viemClient.deployContract({
+      abi: erc721Compiled.abi as Abi,
+      bytecode: bytecode as `0x${string}`,
+      account: this.viemClient.account!,
+      args: [initialOwner],
+      chain: this.viemClient.chain,
+    });
+
+    const receipt1 = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: deployHash,
+    });
+
+    const contract = getContract({
+      address: receipt1.contractAddress!,
+      abi: erc721Compiled.abi as Abi,
+      client: this.viemClient,
+    });
+
+    // Mint NFT to the initial owner first
+    // @ts-ignore
+    const mintTxHash = await contract.write.safeMint([initialOwner])!;
+
+    await this.viemPublicClient.waitForTransactionReceipt({
+      hash: mintTxHash,
+    });
+
+    // Get the token ID from the mint transaction logs
+    // Token ID 0 will be the first minted token based on the contract logic
+    const tokenId = 0;
+
+    // Transfer the NFT from initial owner to recipient
+    // @ts-ignore
+    const transferHash = await contract.write.transferFrom([initialOwner, recipient, tokenId]);
+
+    const receipt2 = await this.viemPublicClient.waitForTransactionReceipt({
+      hash: transferHash,
+    });
+
+    const totalCostTinybar = receipt2.gasUsed * receipt2.effectiveGasPrice;
+    const totalCostHbar = formatUnits(BigInt(totalCostTinybar), 18);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+
+    const usdCost = BigNumber(totalCostHbar).multipliedBy(hbarUSDPrice).toString();
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.TRANSFER_ERC721_HARDHAT,
+      transactionHash: transferHash,
+      gasUsed: receipt2.gasUsed.toString(),
+      totalCost: totalCostHbar,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost,
+      timestamp: Date.now().toString(),
+      status: receipt2.status === 'success' ? 'success' : 'failed',
+      blockNumber: receipt2.blockNumber.toString(),
+      gasPrice: receipt2.effectiveGasPrice.toString(),
+    };
+  }
+
+  /**
+   * Key: deploy-erc721-sdk
+   * 1. Load bytecode of compiled erc-721 smart contract
+   * 2. Deploy ERC721 contract
+   */
+  async createERC721_SDK(): Promise<TransactionResult> {
+    // 1. Load bytecode of a compiled erc-721 smart contract
+    const bytecode = erc721Compiled.bytecode;
+
+    // 2. Deploy ERC721 contract
+    const evmAddress = await getEvmCompatibleAddress(
+      this.hederaMirrorNodeService,
+      this.hederaClient.operatorAccountId!
+    );
+
+    const contractCreateTx = new ContractCreateFlow()
+      .setGas(2095808) // TODO: adjust gas limit
+      .setBytecode(bytecode)
+      .setConstructorParameters(
+        new ContractFunctionParameters().addAddress(evmAddress)
+      );
+    const txResponse = await contractCreateTx.execute(this.hederaClient);
+    const txReceipt = await txResponse.getReceipt(this.hederaClient);
+    const txRecord = await txResponse.getRecord(this.hederaClient);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.CREATE_ERC721_SDK,
+      transactionHash: txResponse.transactionId.toString(),
+      gasUsed: txRecord.transactionFee.toString(),
+      totalCost: txRecord.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: txRecord.transactionFee
+        .toBigNumber()
+        .multipliedBy(hbarPriceBN)
+        .toString(),
+      timestamp: txRecord.consensusTimestamp.toString(),
+      status: txReceipt.status === Status.Success ? 'success' : 'failed',
+    };
+  }
+
+  /**
+   * Key: mint-erc721-sdk
+   * 1. Deploy ERC721 contract
+   * 2. Call safeMint function on the contract
+   */
+  async mintERC721_SDK(): Promise<TransactionResult> {
+    const evmAddress = await getEvmCompatibleAddress(
+      this.hederaMirrorNodeService,
+      this.hederaClient.operatorAccountId!
+    );
+
+    // 1. Deploy ERC721 contract
+    const bytecode = erc721Compiled.bytecode;
+    const contractCreateTx = new ContractCreateFlow()
+      .setGas(2095808) // TODO: adjust gas limit
+      .setBytecode(bytecode)
+      .setConstructorParameters(
+        new ContractFunctionParameters().addAddress(evmAddress)
+      );
+
+    const createResponse = await contractCreateTx.execute(this.hederaClient);
+    const createRecord = await createResponse.getRecord(this.hederaClient);
+    const contractId = createRecord.receipt.contractId!;
+
+    // 2. Call safeMint function on the contract
+    const contractExecuteTx = new ContractExecuteTransaction()
+      .setGas(2095808) // TODO: adjust gas limit for ERC721 minting if needed
+      .setMaxTransactionFee(new Hbar(10)) // safely assuming 10 HBARs fee limit
+      .setContractId(contractId)
+      .setFunction(
+        'safeMint',
+        new ContractFunctionParameters().addAddress(evmAddress)
+      );
+
+    const txResponse = await contractExecuteTx.execute(this.hederaClient);
+    const txReceipt = await txResponse.getReceipt(this.hederaClient);
+    const txRecord = await txResponse.getRecord(this.hederaClient);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.MINT_ERC721_SDK,
+      transactionHash: txResponse.transactionId.toString(),
+      gasUsed: txRecord.contractFunctionResult?.gasUsed.toString() || '0',
+      totalCost: txRecord.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: txRecord.transactionFee
+        .toBigNumber()
+        .multipliedBy(hbarPriceBN)
+        .toString(),
+      timestamp: txRecord.consensusTimestamp.toString(),
+      status: txReceipt.status === Status.Success ? 'success' : 'failed',
+    };
+  }
+
+  /**
+   * Key: transfer-erc721-sdk
+   * 1. Deploy ERC721 contract
+   * 2. Mint an NFT
+   * 3. Create a recipient account
+   * 4. Call transferFrom function on the contract
+   */
+  async transferERC721_SDK(): Promise<TransactionResult> {
+    const evmAddress = await getEvmCompatibleAddress(
+      this.hederaMirrorNodeService,
+      this.hederaClient.operatorAccountId!
+    );
+
+    // 1. Deploy ERC721 contract
+    const bytecode = erc721Compiled.bytecode;
+    const contractCreateTx = new ContractCreateFlow()
+      .setGas(2095808) // TODO: adjust gas limit
+      .setBytecode(bytecode)
+      .setConstructorParameters(
+        new ContractFunctionParameters().addAddress(evmAddress)
+      );
+
+    const createResponse = await contractCreateTx.execute(this.hederaClient);
+    const createRecord = await createResponse.getRecord(this.hederaClient);
+    const contractId = createRecord.receipt.contractId!;
+
+    // 2. Mint an NFT
+    const mintTx = new ContractExecuteTransaction()
+      .setGas(2095808) // TODO: adjust gas limit
+      .setMaxTransactionFee(new Hbar(10)) // safely assuming 10 HBARs fee limit
+      .setContractId(contractId)
+      .setFunction(
+        'safeMint',
+        new ContractFunctionParameters().addAddress(evmAddress)
+      );
+
+    // Execute mint with the owner account
+    await mintTx.execute(this.hederaClient);
+
+    // 3. Create a recipient account
+    const recipientClient =
+      await this.walletService.createAccountAndReturnClient();
+
+    // the getEvmCompatibleAddress uses mirrornode, which must first be refreshed with new data to contain the newly created account details
+    await wait(5000);
+
+    const recipientEVMAddress = await getEvmCompatibleAddress(
+      this.hederaMirrorNodeService,
+      recipientClient.operatorAccountId!
+    );
+
+    // 4. Call transferFrom function on the contract
+    const tokenId = 0; // First minted token will have ID 0
+    const contractExecuteTx = new ContractExecuteTransaction()
+      .setGas(2095808) // TODO: adjust gas limit
+      .setMaxTransactionFee(new Hbar(10))
+      .setContractId(contractId)
+      .setFunction(
+        'transferFrom',
+        new ContractFunctionParameters()
+          .addAddress(evmAddress) // from
+          .addAddress(EvmAddress.fromString(recipientEVMAddress)) // to
+          .addUint256(tokenId) // tokenId
+      );
+
+    const txResponse = await contractExecuteTx.execute(this.hederaClient);
+    const txReceipt = await txResponse.getReceipt(this.hederaClient);
+    const txRecord = await txResponse.getRecord(this.hederaClient);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+      ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.TRANSFER_ERC721_SDK,
+      transactionHash: txResponse.transactionId.toString(),
+      gasUsed: txRecord.contractFunctionResult?.gasUsed.toString() || '0',
+      totalCost: txRecord.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: txRecord.transactionFee
+        .toBigNumber()
+        .multipliedBy(hbarPriceBN)
+        .toString(),
+      timestamp: txRecord.consensusTimestamp.toString(),
+      status: txReceipt.status === Status.Success ? 'success' : 'failed',
+    };
   }
 }
