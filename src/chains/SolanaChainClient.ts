@@ -9,6 +9,7 @@ import {
 } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
   createInitializeMintInstruction,
   createMint,
@@ -31,7 +32,7 @@ import {
   generateSigner,
   percentAmount,
   signerIdentity,
-  publicKey as umiPublicKey,
+  publicKey as getMetaplexPublicKey,
 } from '@metaplex-foundation/umi';
 import BigNumber from 'bignumber.js';
 import bs58 from 'bs58';
@@ -368,17 +369,21 @@ export class SolanaChainClient extends AbstractChainClient {
     umi.use(mplTokenMetadata());
 
     const mintSigner = generateSigner(umi);
+    const splTokenProgram = umi.programs.getPublicKey(
+      TOKEN_PROGRAM_ID.toBase58()
+    );
 
-    const tx = createV1(umi, {
+    const transaction = createV1(umi, {
       mint: mintSigner,
       authority: umi.identity,
       name: metadata.name,
       symbol: metadata.symbol,
       uri: metadata.uri,
       sellerFeeBasisPoints: percentAmount(0),
+      splTokenProgram,
     });
 
-    const result = await tx.sendAndConfirm(umi);
+    const result = await transaction.sendAndConfirm(umi);
     const signatureBase58 = bs58.encode(result.signature as Uint8Array);
 
     const txDetails = await this.connection.getParsedTransaction(
@@ -408,7 +413,82 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   async associateNativeNFT(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
+    const solanaWalletService = this.walletService as SolanaWalletService;
+    const { privateKey } = await solanaWalletService.createAccount();
+    const payer = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKey, 'hex'))
+    );
+
+    const umi = createUmi(this.connection.rpcEndpoint);
+    const umiWalletSigner = createSignerFromKeypair(
+      umi,
+      umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
+    );
+    umi.use(signerIdentity(umiWalletSigner));
+    umi.use(mplTokenMetadata());
+
+    const mintSigner = generateSigner(umi);
+    const splTokenProgram = umi.programs.getPublicKey(
+      TOKEN_PROGRAM_ID.toBase58()
+    );
+
+    await createV1(umi, {
+      mint: mintSigner,
+      authority: umi.identity,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      uri: metadata.uri,
+      sellerFeeBasisPoints: percentAmount(0),
+      splTokenProgram,
+    }).sendAndConfirm(umi);
+
+    const ataAddress = getAssociatedTokenAddressSync(
+      new PublicKey(mintSigner.publicKey),
+      payer.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const ataInstruction = createAssociatedTokenAccountInstruction(
+      payer.publicKey,
+      ataAddress,
+      payer.publicKey,
+      new PublicKey(mintSigner.publicKey),
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const tx = new Transaction().add(ataInstruction);
+
+    const signature = await sendAndConfirmTransaction(this.connection, tx, [
+      payer,
+    ]);
+
+    const txDetails = await this.connection.getParsedTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+    });
+
+    const fee = txDetails?.meta?.fee ?? 0;
+    await this.fetchSolPrice();
+
+    const usdCost = calculateUsdCost(
+      fee,
+      this.solPriceUSD,
+      this.chainConfig.decimals
+    );
+
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.ASSOCIATE_NATIVE_NFT,
+      transactionHash: signature,
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
   }
 
   async mintNativeNFT(): Promise<TransactionResult> {
@@ -419,29 +499,74 @@ export class SolanaChainClient extends AbstractChainClient {
     );
 
     const umi = createUmi(this.connection.rpcEndpoint);
-    const signer = createSignerFromKeypair(
+    const umiWalletSigner = createSignerFromKeypair(
       umi,
       umi.eddsa.createKeypairFromSecretKey(payer.secretKey)
     );
-    umi.use(signerIdentity(signer));
+    umi.use(signerIdentity(umiWalletSigner));
     umi.use(mplTokenMetadata());
 
-    const mintSigner = generateSigner(umi);
+    const umiMint = generateSigner(umi);
+    const mint = Keypair.fromSecretKey(umiMint.secretKey);
 
-    const tx = createAndMint(umi, {
-      mint: mintSigner,
+    const mintPublicKey = new PublicKey(umiMint.publicKey);
+
+    const splTokenProgram = umi.programs.getPublicKey(
+      TOKEN_PROGRAM_ID.toBase58()
+    );
+
+    console.log(' umi identity:', JSON.stringify(umi.identity));
+    console.log('\n\n');
+    console.log(' payer', JSON.stringify(payer));
+    console.log('\n\n');
+    console.log(' mint', JSON.stringify(mint));
+
+    await createV1(umi, {
+      mint: umiMint,
       authority: umi.identity,
-      payer: umi.identity,
       name: metadata.name,
       symbol: metadata.symbol,
       uri: metadata.uri,
       sellerFeeBasisPoints: percentAmount(0),
-      tokenStandard: TokenStandard.NonFungible,
+      splTokenProgram,
+    }).sendAndConfirm(umi);
+
+    const ataAddress = getAssociatedTokenAddressSync(
+      mintPublicKey,
+      payer.publicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const ataInstruction = createAssociatedTokenAccountInstruction(
+      payer.publicKey,
+      ataAddress,
+      payer.publicKey,
+      mintPublicKey,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const ataTx = new Transaction().add(ataInstruction);
+    await sendAndConfirmTransaction(this.connection, ataTx, [payer]);
+
+    console.log(' umi identity 2:', JSON.stringify(umi.identity));
+    console.log('\n\n');
+    console.log(' payer 2', JSON.stringify(payer));
+    console.log('\n\n');
+    console.log(' mint 2', JSON.stringify(mint));
+
+    const mintTransaction = mintV1(umi, {
+      mint: getMetaplexPublicKey(mint.publicKey),
+      authority: umi.identity,
       amount: 1,
-      tokenOwner: umi.identity.publicKey,
+      tokenOwner: getMetaplexPublicKey(payer.publicKey.toBase58()),
+      tokenStandard: TokenStandard.NonFungible,
+      splTokenProgram,
     });
 
-    const result = await tx.sendAndConfirm(umi);
+    const result = await mintTransaction.sendAndConfirm(umi);
     const signatureBase58 = bs58.encode(result.signature as Uint8Array);
 
     const txDetails = await this.connection.getParsedTransaction(
@@ -450,9 +575,10 @@ export class SolanaChainClient extends AbstractChainClient {
         maxSupportedTransactionVersion: 0,
       }
     );
-    const fee = txDetails?.meta?.fee ?? 0;
 
+    const fee = txDetails?.meta?.fee ?? 0;
     await this.fetchSolPrice();
+
     const usdCost = calculateUsdCost(
       fee,
       this.solPriceUSD,
