@@ -515,12 +515,6 @@ export class SolanaChainClient extends AbstractChainClient {
       TOKEN_PROGRAM_ID.toBase58()
     );
 
-    console.log(' umi identity:', JSON.stringify(umi.identity));
-    console.log('\n\n');
-    console.log(' payer', JSON.stringify(payer));
-    console.log('\n\n');
-    console.log(' mint', JSON.stringify(mint));
-
     await createV1(umi, {
       mint: umiMint,
       authority: umi.identity,
@@ -551,12 +545,6 @@ export class SolanaChainClient extends AbstractChainClient {
     const ataTx = new Transaction().add(ataInstruction);
     await sendAndConfirmTransaction(this.connection, ataTx, [payer]);
 
-    console.log(' umi identity 2:', JSON.stringify(umi.identity));
-    console.log('\n\n');
-    console.log(' payer 2', JSON.stringify(payer));
-    console.log('\n\n');
-    console.log(' mint 2', JSON.stringify(mint));
-
     const mintTransaction = mintV1(umi, {
       mint: getMetaplexPublicKey(mint.publicKey),
       authority: umi.identity,
@@ -566,7 +554,9 @@ export class SolanaChainClient extends AbstractChainClient {
       splTokenProgram,
     });
 
-    const result = await mintTransaction.sendAndConfirm(umi);
+    const result = await mintTransaction.sendAndConfirm(umi, {
+      send: { skipPreflight: true },
+    });
     const signatureBase58 = bs58.encode(result.signature as Uint8Array);
 
     const txDetails = await this.connection.getParsedTransaction(
