@@ -1,3 +1,5 @@
+import { Chain } from 'viem';
+
 export interface TransactionResult {
   chain: SupportedChain;
   operation: SupportedOperation;
@@ -75,10 +77,6 @@ export enum SupportedOperation {
 
   // HCS
   HCS_MESSAGE_SUBMIT = 'hcs-message-submit',
-
-  // Additional (Already Present)
-  SMART_CONTRACT_CALL = 'contract-call',
-  TOKEN_SWAP = 'swap'
 }
 
 export enum NetworkType {
@@ -92,3 +90,8 @@ export type AccountData = {
   privateKey: string;
   publicKey: string;
 };
+
+export interface ExtendedChain extends Chain {
+  type: SupportedChain;
+  network: NetworkType;
+}

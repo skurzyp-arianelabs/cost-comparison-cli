@@ -1,16 +1,25 @@
-import { ChainConfig, SupportedOperation, TransactionResult } from "../../types";
-import { IChainClient } from "../IChainClient";
-import { ConfigService } from "../../services/ConfigService";
-import { CoinGeckoApiService } from "../../services/ApiService/CoinGeckoApiService";
-import { AbstractWalletService } from "../../services/WalletServices/AbstractWalletService";
+import {
+  ExtendedChain,
+  SupportedChain,
+  SupportedOperation,
+  TransactionResult,
+} from '../../types';
+import { IChainClient } from '../IChainClient';
+import { ConfigService } from '../../services/ConfigService/ConfigService';
+import { CoinGeckoApiService } from '../../services/ApiService/CoinGeckoApiService';
+import { AbstractWalletService } from '../../services/WalletServices/AbstractWalletService';
 
 export abstract class AbstractChainClient implements IChainClient {
-  protected chainConfig: ChainConfig;
+  protected chainConfig: ExtendedChain;
   protected configManager: ConfigService;
   protected coinGeckoApiService: CoinGeckoApiService;
   protected walletService: AbstractWalletService;
 
-  constructor(chainConfig: ChainConfig, configService: ConfigService, walletService: AbstractWalletService) {
+  constructor(
+    chainConfig: ExtendedChain,
+    configService: ConfigService,
+    walletService: AbstractWalletService
+  ) {
     this.chainConfig = chainConfig;
     this.configManager = configService;
     this.coinGeckoApiService = new CoinGeckoApiService();
@@ -58,7 +67,7 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
-  getChainInfo(): ChainConfig {
+  getChainInfo(): ExtendedChain {
     return this.chainConfig;
   }
 
@@ -66,7 +75,9 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
-  async executeOperation(operation: SupportedOperation): Promise<TransactionResult> {
+  async executeOperation(
+    operation: SupportedOperation
+  ): Promise<TransactionResult> {
     try {
       switch (operation) {
         case SupportedOperation.CREATE_NATIVE_FT:
@@ -90,16 +101,20 @@ export abstract class AbstractChainClient implements IChainClient {
         case SupportedOperation.TRANSFER_ERC20_HARDHAT:
           return await this.transferERC20_RPC();
         default:
-          throw new Error(`executeOperation: Operation '${operation}' is not implemented or supported.`);
+          throw new Error(
+            `executeOperation: Operation '${operation}' is not implemented or supported.`
+          );
       }
     } catch (error: any) {
-      console.error(`Error during operation '${operation}': ${error.message || error}`);
+      console.error(
+        `Error during operation '${operation}': ${error.message || error}`
+      );
       return {
         status: 'failed',
         error: error.message || error,
         timestamp: Date.now().toLocaleString(),
         operation,
-        chain: this.chainConfig.type
+        chain: this.chainConfig.name as SupportedChain,
       };
     }
   }
