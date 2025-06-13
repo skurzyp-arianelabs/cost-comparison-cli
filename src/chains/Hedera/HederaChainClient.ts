@@ -14,10 +14,12 @@ import {
   ContractFunctionParameters,
   EvmAddress,
   Hbar,
+  NftId,
   Status,
   TokenAssociateTransaction,
   TokenCreateTransaction,
   TokenMintTransaction,
+  TokenSupplyType,
   TokenType,
   TransferTransaction,
 } from '@hashgraph/sdk';
@@ -114,6 +116,8 @@ export class HederaChainClient extends AbstractChainClient {
     // 1. create a new account
     const newAccountClient =
       await this.walletService.createAccountAndReturnClient();
+
+    await wait(5000);
 
     // 2. create a token from the newly crated account
     const tx = new TokenCreateTransaction()
@@ -260,6 +264,209 @@ export class HederaChainClient extends AbstractChainClient {
         .toString(), // TODO: might require changing the type to BigNumber
       timestamp: tx2Record.consensusTimestamp.toString(),
       status: tx2Receipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
+    };
+  }
+
+  async createNativeNFT(): Promise<TransactionResult> {
+    const tx = new TokenCreateTransaction()
+      .setTokenName('Your Token Name')
+      .setTokenSymbol('F')
+      .setTokenType(TokenType.NonFungibleUnique)
+      .setSupplyType(TokenSupplyType.Finite)
+      .setSupplyKey(this.hederaClient.operatorPublicKey!)
+      .setDecimals(0)
+      .setMaxSupply(1000)
+      .setTreasuryAccountId(this.hederaClient.operatorAccountId!)
+      .setTransactionValidDuration(180);
+
+    const txResponse = await tx.execute(this.hederaClient);
+    const txReceipt = await txResponse.getReceipt(this.hederaClient);
+    const txRecord = await txResponse.getRecord(this.hederaClient);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+    ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.CREATE_NATIVE_NFT,
+      transactionHash: txResponse.transactionId.toString(),
+      gasUsed: txRecord.transactionFee.toString(),
+      totalCost: txRecord.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: txRecord.transactionFee
+        .toBigNumber()
+        .multipliedBy(hbarPriceBN)
+        .toString(), // TODO: might require changing the type to BigNumber
+      timestamp: txRecord.consensusTimestamp.toString(),
+      status: txReceipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
+    };
+  }
+
+  async associateNativeNFT(): Promise<TransactionResult> {
+    // 1. create a new account
+    const newAccountClient =
+      await this.walletService.createAccountAndReturnClient();
+
+    // 2. create a token from the newly crated account
+    const tx = new TokenCreateTransaction()
+      .setTokenName('Your Token Name')
+      .setTokenSymbol('F')
+      .setTokenType(TokenType.NonFungibleUnique)
+      .setSupplyType(TokenSupplyType.Finite)
+      .setSupplyKey(newAccountClient.operatorPublicKey!)
+      .setDecimals(0)
+      .setMaxSupply(1000)
+      .setTreasuryAccountId(newAccountClient.operatorAccountId!)
+      .setTransactionValidDuration(180);
+
+    const txResponse = await tx.execute(newAccountClient);
+    const txReceipt = await txResponse.getReceipt(newAccountClient);
+    const tokenId = txReceipt.tokenId!;
+
+    // 3. associate the account from env with the token and get the tx report
+    const tx2 = new TokenAssociateTransaction()
+      .setAccountId(this.hederaClient.operatorAccountId!)
+      .setTokenIds([tokenId]); //Fill in the token ID
+
+    const tx2Response = await tx2.execute(this.hederaClient);
+    const tx2Receipt = await tx2Response.getReceipt(this.hederaClient);
+    const tx2Record = await tx2Response.getRecord(this.hederaClient);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+    ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.ASSOCIATE_NATIVE_NFT,
+      transactionHash: tx2Response.transactionId.toString(),
+      totalCost: tx2Record.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: tx2Record.transactionFee
+        .toBigNumber()
+        .multipliedBy(hbarPriceBN)
+        .toString(), // TODO: might require changing the type to BigNumber
+      timestamp: tx2Record.consensusTimestamp.toString(),
+      status: tx2Receipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
+    };
+  }
+
+  async mintNativeNFT(): Promise<TransactionResult> {
+    const tx = new TokenCreateTransaction()
+      .setTokenName('Your Token Name')
+      .setTokenSymbol('F')
+      .setTokenType(TokenType.NonFungibleUnique)
+      .setSupplyType(TokenSupplyType.Finite)
+      .setSupplyKey(this.hederaClient.operatorPublicKey!)
+      .setDecimals(0)
+      .setMaxSupply(1000)
+      .setTreasuryAccountId(this.hederaClient.operatorAccountId!)
+      .setTransactionValidDuration(180);
+
+    const txResponse = await tx.execute(this.hederaClient);
+    const txReceipt = await txResponse.getReceipt(this.hederaClient);
+    const tokenId = txReceipt.tokenId!;
+
+    const tx2 = new TokenMintTransaction()
+      .setTokenId(tokenId)
+      .setMetadata([
+        new TextEncoder().encode(
+          'https://ipfs.io/ipfs/QmTW9HWfb2wsQqEVJiixkQ73Nsfp2Rx4ESaDSiQ7ThwnFM'
+        ),
+      ]);
+
+    const tx2Response = await tx2.execute(this.hederaClient);
+    const tx2Receipt = await tx2Response.getReceipt(this.hederaClient);
+    const tx2Record = await tx2Response.getRecord(this.hederaClient);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+    ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.MINT_NATIVE_NFT,
+      transactionHash: tx2Response.transactionId.toString(),
+      totalCost: tx2Record.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: tx2Record.transactionFee
+        .toBigNumber()
+        .multipliedBy(hbarPriceBN)
+        .toString(), // TODO: might require changing the type to BigNumber
+      timestamp: tx2Record.consensusTimestamp.toString(),
+      status: tx2Receipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
+    };
+  }
+
+  async transferNativeNFT(): Promise<TransactionResult> {
+    // 1. create a new account
+    const AUTOASSOCIATION_LIMIT = -1; // unlimited autoassociation
+    const newAccountClient =
+      await this.walletService.createAccountAndReturnClient(
+        AUTOASSOCIATION_LIMIT
+      );
+
+    // 2. create a token from the newly crated account
+    const tx = new TokenCreateTransaction()
+      .setTokenName('Your Token Name')
+      .setTokenSymbol('F')
+      .setTokenType(TokenType.NonFungibleUnique)
+      .setSupplyType(TokenSupplyType.Finite)
+      .setSupplyKey(newAccountClient.operatorPublicKey!)
+      .setDecimals(0)
+      .setMaxSupply(1000)
+      .setTreasuryAccountId(newAccountClient.operatorAccountId!)
+      .setTransactionValidDuration(180);
+
+    const txResponse = await tx.execute(newAccountClient);
+    const txReceipt = await txResponse.getReceipt(newAccountClient);
+    const tokenId = txReceipt.tokenId!;
+
+    // 3. Mint token
+    const tx2 = new TokenMintTransaction()
+      .setTokenId(tokenId)
+      .setMetadata([
+        new TextEncoder().encode(
+          'https://ipfs.io/ipfs/QmTW9HWfb2wsQqEVJiixkQ73Nsfp2Rx4ESaDSiQ7ThwnFM'
+        ),
+      ]);
+
+    const tx2Response = await tx2.execute(newAccountClient);
+    const tx2Receipt = await tx2Response.getReceipt(newAccountClient);
+    const serialNumber = tx2Receipt.serials[0]!;
+
+    // 4. transfer token to account from envs
+    const tx3 = new TransferTransaction().addNftTransfer(
+      new NftId(tokenId, serialNumber!),
+      newAccountClient.operatorAccountId!,
+      this.hederaClient.operatorAccountId!
+    );
+
+    const tx3Response = await tx3.execute(this.hederaClient);
+    const tx3Receipt = await tx2Response.getReceipt(this.hederaClient);
+    const tx3Record = await tx2Response.getRecord(this.hederaClient);
+
+    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
+      'hedera-hashgraph'
+    ].usd;
+    const hbarPriceBN = new BigNumber(hbarUSDPrice);
+
+    return {
+      chain: this.chainConfig.type,
+      operation: SupportedOperation.ASSOCIATE_NATIVE_NFT,
+      transactionHash: tx3Response.transactionId.toString(),
+      totalCost: tx3Record.transactionFee.toBigNumber().toString(),
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      usdCost: tx3Record.transactionFee
+        .toBigNumber()
+        .multipliedBy(hbarPriceBN)
+        .toString(), // TODO: might require changing the type to BigNumber
+      timestamp: tx3Record.consensusTimestamp.toString(),
+      status: tx3Receipt.status === Status.Success ? 'success' : 'failed', // TODO: define as enum
     };
   }
 

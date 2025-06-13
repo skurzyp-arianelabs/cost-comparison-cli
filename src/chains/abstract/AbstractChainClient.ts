@@ -67,6 +67,22 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
+  async createNativeNFT(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async associateNativeNFT(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async mintNativeNFT(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
+  async transferNativeNFT(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
   getChainInfo(): ExtendedChain {
     return this.chainConfig;
   }
@@ -100,6 +116,14 @@ export abstract class AbstractChainClient implements IChainClient {
           return await this.mintERC20_RPC();
         case SupportedOperation.TRANSFER_ERC20_HARDHAT:
           return await this.transferERC20_RPC();
+        case SupportedOperation.CREATE_NATIVE_NFT:
+          return await this.createNativeNFT();
+        case SupportedOperation.ASSOCIATE_NATIVE_NFT:
+          return await this.associateNativeNFT();
+        case SupportedOperation.MINT_NATIVE_NFT:
+          return await this.mintNativeNFT();
+        case SupportedOperation.TRANSFER_NATIVE_NFT:
+          return await this.transferNativeNFT();
         default:
           throw new Error(
             `executeOperation: Operation '${operation}' is not implemented or supported.`
