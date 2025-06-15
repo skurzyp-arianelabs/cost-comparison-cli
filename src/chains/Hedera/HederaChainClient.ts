@@ -22,6 +22,8 @@ import {
   TokenMintTransaction,
   TokenSupplyType,
   TokenType,
+  TopicCreateTransaction,
+  TopicMessageSubmitTransaction,
   TransactionReceipt,
   TransactionRecord,
   TransactionResponse,
@@ -41,9 +43,10 @@ import {
   getContract,
   parseUnits,
   PublicClient,
-  WalletClient,
   TransactionReceipt as ViemTransactionReceipt,
+  WalletClient,
 } from 'viem';
+import { get900BytesMessage } from '../../utils/utils';
 
 export class HederaChainClient extends AbstractChainClient {
   private readonly hederaClient: Client;
@@ -1035,6 +1038,38 @@ export class HederaChainClient extends AbstractChainClient {
       SupportedOperation.TRANSFER_ERC721_HARDHAT,
       transferHash,
       transferReceipt
+    );
+  }
+
+  /**
+   * key: hcs-message-submit
+   * 1. Create a topic.
+   * 2. Submit a 900-bytes long message to the topic.
+   */
+  async hcsSubmitMessage(): Promise<TransactionResult> {
+    const txTopicCreate = new TopicCreateTransaction()
+      .setAdminKey(this.hederaClient.operatorPublicKey!)
+      .setSubmitKey(this.hederaClient.operatorPublicKey!);
+
+    const txResponse = await txTopicCreate.execute(this.hederaClient);
+    const txRecord = await txResponse.getRecord(this.hederaClient);
+    const topicId = txRecord.receipt.topicId!;
+
+    const txSubmitMessage = new TopicMessageSubmitTransaction()
+      .setTopicId(topicId)
+      .setMessage(get900BytesMessage());
+
+    const txSubmitResponse = await txSubmitMessage.execute(this.hederaClient);
+    const txSubmitReceipt = await txSubmitResponse.getReceipt(
+      this.hederaClient
+    );
+    const txSubmitRecord = await txSubmitResponse.getRecord(this.hederaClient);
+
+    return this.createTransactionResult(
+      SupportedOperation.HCS_MESSAGE_SUBMIT,
+      txSubmitResponse,
+      txSubmitRecord,
+      txSubmitReceipt
     );
   }
 }
