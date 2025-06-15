@@ -1,4 +1,5 @@
 import {
+  createNonceManager,
   createPublicClient,
   createWalletClient,
   http,
@@ -14,6 +15,7 @@ import {
 import { AbstractWalletService } from './AbstractWalletService';
 import { ConfigService } from '../ConfigService/ConfigService';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { jsonRpc } from 'viem/nonce';
 
 export class EvmWalletService extends AbstractWalletService {
   private readonly viemWalletClient: WalletClient;
@@ -38,8 +40,7 @@ export class EvmWalletService extends AbstractWalletService {
     ).privateKey!;
 
     //TODO: temporary fix as DER encoded keys are not working
-    const pk =
-      process.env.HEDERA_EVM_PK!;
+    const pk = process.env.HEDERA_EVM_PK!;
 
     return this.createClient(networkType, pk);
   }
@@ -99,7 +100,12 @@ export class EvmWalletService extends AbstractWalletService {
     }
 
     const rpcUrl = this.getRpcUrl(networkType);
-    const account = privateKeyToAccount(privateKey as `0x${string}`);
+
+    const account = privateKeyToAccount(privateKey as `0x${string}`, {
+      nonceManager: createNonceManager({
+        source: jsonRpc(),
+      }),
+    });
 
     return createWalletClient({
       account,
