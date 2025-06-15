@@ -54,16 +54,17 @@ export class CostComparisonTool {
       `🚀 Executing ${operations.length} operations across ${healthyClients.length} chains`
     );
 
-    //TODO: currently runs given operations only once for each given chain. Should support setting number of executions
-    const results = await this.executeConcurrentOperations(clients, operations);
+    // TODO: currently runs given operations only once for each given chain. Should support setting number of executions
+    // FIXME: concurrent operations handled by viem fails due to problems with transactions order
+    // const results = await this.executeConcurrentOperations(clients, operations);
+    const results = await this.executeSequentialOperations(clients, operations);
+
     console.log(JSON.stringify(results, null, 2));
+    return;
   }
 
   private async executeConcurrentOperations(
-    clients: Array<{
-      chainId: string;
-      client: IChainClient;
-    }>,
+    clients: Array<{ chainId: string; client: IChainClient }>,
     operations: SupportedOperation[]
   ): Promise<TransactionResult[]> {
     const promises = clients.flatMap(({ client }) =>
@@ -77,5 +78,24 @@ export class CostComparisonTool {
           result.status === 'fulfilled'
       )
       .map((result) => result.value);
+  }
+
+  private async executeSequentialOperations(
+    clients: Array<{ chainId: string; client: IChainClient }>,
+    operations: SupportedOperation[]
+  ): Promise<TransactionResult[]> {
+    const results: TransactionResult[] = [];
+    for (const { chainId, client } of clients) {
+      for (const operation of operations) {
+        try {
+          console.log(`Running ${operation} on ${chainId}`);
+          const result = await client.executeOperation(operation);
+          results.push(result);
+        } catch (error) {
+          console.error(`Error executing ${operation} on ${chainId}:`, error);
+        }
+      }
+    }
+    return results;
   }
 }
