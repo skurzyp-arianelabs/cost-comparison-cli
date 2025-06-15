@@ -1,5 +1,7 @@
+import { Chain } from 'viem';
+
 export interface TransactionResult {
-  chain: string;
+  chain: SupportedChain;
   operation: SupportedOperation;
   transactionHash?: string;
   gasUsed?: string;
@@ -25,7 +27,8 @@ export enum SupportedChain {
 
 export interface WalletCredentials {
   privateKey?: string;
-  accountId?: string;
+  address?: string;
+  networkType?: NetworkType;
 }
 
 export interface ChainConfig {
@@ -74,8 +77,21 @@ export enum SupportedOperation {
 
   // HCS
   HCS_MESSAGE_SUBMIT = 'hcs-message-submit',
+}
 
-  // Additional (Already Present)
-  SMART_CONTRACT_CALL = 'contract-call',
-  TOKEN_SWAP = 'swap'
+export enum NetworkType {
+  TESTNET = 'testnet',
+  MAINNET = 'mainnet',
+  PREVIEWNET = 'previewnet'
+}
+
+export type AccountData = {
+  accountAddress: string;
+  privateKey: string;
+  publicKey: string;
+};
+
+export interface ExtendedChain extends Chain {
+  type: SupportedChain;
+  network: NetworkType;
 }
