@@ -16,6 +16,7 @@ import { AbstractWalletService } from './AbstractWalletService';
 import { ConfigService } from '../ConfigService/ConfigService';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { jsonRpc } from 'viem/nonce';
+import { PrivateKey } from '@hashgraph/sdk';
 
 export class EvmWalletService extends AbstractWalletService {
   private readonly viemWalletClient: WalletClient;
@@ -33,16 +34,15 @@ export class EvmWalletService extends AbstractWalletService {
 
   protected initClient(): WalletClient {
     const networkType = this.configService.getWalletCredentials(
-      SupportedChain.HEDERA
+      this.supportedChain
     ).networkType!;
     const privateKey = this.configService.getWalletCredentials(
-      SupportedChain.HEDERA
+      this.supportedChain
     ).privateKey!;
 
-    //TODO: temporary fix as DER encoded keys are not working
-    const pk = process.env.HEDERA_EVM_PK!;
-
-    return this.createClient(networkType, pk);
+    if (this.supportedChain === SupportedChain.HEDERA)
+      return this.createClient(networkType, this.parseDerKeyToHex(privateKey));
+    else return this.createClient(networkType, privateKey);
   }
 
   private initPublicClient(): PublicClient {
@@ -134,25 +134,11 @@ export class EvmWalletService extends AbstractWalletService {
     return this.supportedChain;
   }
 
-  // Additional utility methods for EVM-specific operations
-  public async getBalance(address?: string): Promise<bigint> {
-    const targetAddress = address || this.viemWalletClient.account?.address;
-    if (!targetAddress) {
-      throw new Error(
-        'No address provided and no account set on wallet client'
-      );
-    }
+  private parseDerKeyToHex(derKey: string): `0x${string}` {
+    const der = PrivateKey.fromStringDer(derKey);
+    const raw = der.toBytesRaw();
 
-    return await this.viemPublicClient.getBalance({
-      address: targetAddress as `0x${string}`,
-    });
-  }
-
-  public async getGasPrice(): Promise<bigint> {
-    return await this.viemPublicClient.getGasPrice();
-  }
-
-  public async estimateGas(transaction: any): Promise<bigint> {
-    return await this.viemPublicClient.estimateGas(transaction);
+    const hex = Buffer.from(raw).toString('hex').padStart(64, '0');
+    return `0x${hex}`;
   }
 }
