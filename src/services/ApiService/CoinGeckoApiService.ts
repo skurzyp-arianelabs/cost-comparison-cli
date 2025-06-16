@@ -4,14 +4,16 @@ const hbarPriceResponse = z.object({
   'hedera-hashgraph': z.object({ usd: z.number() }),
 });
 
-
 const solPriceResponse = z.object({
   'solana': z.object({ usd: z.number() }),
 });
 
-
 const avaxPriceResponse = z.object({
   'avalanche-2': z.object({ usd: z.number() }),
+});
+
+const opPriceResponse = z.object({
+  'optimism': z.object({ usd: z.number() }),
 });
 
 
@@ -50,5 +52,17 @@ export class CoinGeckoApiService {
     }
 
     return avaxPriceResponse.parse(await response.json());
+  }
+
+  async getOpPriceInUsd() {
+    const response = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=optimism&vs_currencies=usd',
+      { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+    );
+    if (!response.ok) {
+      throw new Error('Response is not valid');
+    }
+
+    return opPriceResponse.parse(await response.json());
   }
 }

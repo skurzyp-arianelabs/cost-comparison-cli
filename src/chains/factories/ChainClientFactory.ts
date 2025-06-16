@@ -4,6 +4,7 @@ import { HederaChainClient } from "../Hedera/HederaChainClient";
 import { SolanaChainClient } from "../SolanaChainClient";
 import { AbstractChainClient } from '../abstract/AbstractChainClient';
 import { AvalancheChainClient } from '../Avalanche/AvalancheChainClient';
+import { OptimismChainClient } from '../Optimism/OptimismChainClient';
 
 export class ChainClientFactory {
   private configService: ConfigService;
@@ -25,6 +26,8 @@ export class ChainClientFactory {
         return new SolanaChainClient(config, this.configService);
       case SupportedChain.AVALANCHE:
         return new AvalancheChainClient(config, this.configService);
+      case SupportedChain.OPTIMISM:
+        return new OptimismChainClient(config, this.configService);
       default:
         throw new Error(`No client implementation for chain type: ${config.name}`);
     }

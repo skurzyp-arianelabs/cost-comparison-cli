@@ -17,6 +17,7 @@ import { ConfigService } from '../ConfigService/ConfigService';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { jsonRpc } from 'viem/nonce';
 import { PrivateKey } from '@hashgraph/sdk';
+import { publicActionsL2, walletActionsL2 } from 'viem/op-stack';
 
 export class EvmWalletService extends AbstractWalletService {
   private readonly viemWalletClient: WalletClient;
@@ -48,10 +49,17 @@ export class EvmWalletService extends AbstractWalletService {
   private initPublicClient(): PublicClient {
     const rpcUrl = this.getRpcUrl();
 
-    return createPublicClient({
-      chain: this.chain,
-      transport: http(rpcUrl),
-    });
+    if (this.supportedChain === SupportedChain.OPTIMISM){
+      return createPublicClient({
+        chain: this.chain,
+        transport: http(rpcUrl),
+      }).extend(publicActionsL2());
+    } else {
+      return createPublicClient({
+        chain: this.chain,
+        transport: http(rpcUrl),
+      });
+    }
   }
 
   public getClient(): WalletClient {
@@ -107,11 +115,19 @@ export class EvmWalletService extends AbstractWalletService {
       }),
     });
 
-    return createWalletClient({
-      account,
-      chain: this.chain,
-      transport: http(rpcUrl),
-    });
+    if (this.supportedChain === SupportedChain.OPTIMISM){
+      return createWalletClient({
+        account,
+        chain: this.chain,
+        transport: http(rpcUrl),
+      }).extend(walletActionsL2());
+    } else {
+      return createWalletClient({
+        account,
+        chain: this.chain,
+        transport: http(rpcUrl),
+      });
+    }
   }
 
   private getRpcUrl(networkType?: NetworkType): string {
