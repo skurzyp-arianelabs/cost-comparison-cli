@@ -6,6 +6,8 @@ import {
   SystemProgram,
   sendAndConfirmTransaction,
   PublicKey,
+  ComputeBudgetProgram,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
@@ -47,9 +49,13 @@ import {
 import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { SolanaWalletService } from '../../services/WalletServices/SolanaWalletService';
 import { calculateUsdCost } from '../../utils/calculateUsdCost';
-import { DECIMALS, metadata } from './constants';
-
-const MINT_ACCOUNT_SIZE = 82; // Size (in bytes) of the Mint account required by SPL Token program
+import {
+  DECIMALS,
+  MEMO_PROGRAM_ID,
+  metadata,
+  MINT_ACCOUNT_SIZE,
+  SOLANA_MEMO_TEXT,
+} from './constants';
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
@@ -518,6 +524,43 @@ export class SolanaChainClient extends AbstractChainClient {
       chain: SupportedChain.SOLANA,
       operation: SupportedOperation.TRANSFER_NATIVE_NFT,
       transactionHash: transferSignature,
+      gasUsed: fee.toString(),
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      usdCost,
+      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
+      timestamp: Date.now().toLocaleString(),
+      status: 'success',
+    };
+  }
+
+  async hcsSubmitMessage(): Promise<TransactionResult> {
+    const payer = await this.getPayerFromWalletService();
+    const recipient = Keypair.generate();
+
+    const tx = new Transaction().add(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 10000000 }),
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: recipient.publicKey,
+        lamports: 1_000_000,
+      }),
+      new TransactionInstruction({
+        keys: [],
+        programId: new PublicKey(MEMO_PROGRAM_ID),
+        data: Buffer.from(SOLANA_MEMO_TEXT, 'utf-8'),
+      })
+    );
+
+    const signature = await sendAndConfirmTransaction(this.connection, tx, [
+      payer,
+    ]);
+
+    const { fee, usdCost } = await this.getFeeAndUsdCost(signature);
+
+    return {
+      chain: SupportedChain.SOLANA,
+      operation: SupportedOperation.HCS_MESSAGE_SUBMIT,
+      transactionHash: signature,
       gasUsed: fee.toString(),
       totalCost: (fee / LAMPORTS_PER_SOL).toString(),
       usdCost,

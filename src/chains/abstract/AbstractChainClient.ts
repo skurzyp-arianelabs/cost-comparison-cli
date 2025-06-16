@@ -107,6 +107,10 @@ export abstract class AbstractChainClient implements IChainClient {
     throw new Error('Method not implemented.');
   }
 
+  async hcsSubmitMessage(): Promise<TransactionResult> {
+    throw new Error('Method not implemented.');
+  }
+
   getChainInfo(): ExtendedChain {
     return this.chainConfig;
   }
@@ -160,6 +164,8 @@ export abstract class AbstractChainClient implements IChainClient {
           return await this.mintNativeNFT();
         case SupportedOperation.TRANSFER_NATIVE_NFT:
           return await this.transferNativeNFT();
+        case SupportedOperation.HCS_MESSAGE_SUBMIT:
+          return await this.hcsSubmitMessage();
         default:
           throw new Error(
             `executeOperation: Operation '${operation}' is not implemented or supported.`
