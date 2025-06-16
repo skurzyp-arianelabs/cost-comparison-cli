@@ -3,6 +3,7 @@ import { SupportedChain } from '../../types';
 import { IChainClient } from '../IChainClient';
 import { HederaChainClient } from '../Hedera/HederaChainClient';
 import { SolanaChainClient } from '../Solana/SolanaChainClient';
+import { StellarChainClient } from '../Stellar/StellarChainClient';
 
 export class ChainClientFactory {
   private configService: ConfigService;
@@ -22,6 +23,8 @@ export class ChainClientFactory {
         return new HederaChainClient(config, this.configService);
       case SupportedChain.SOLANA:
         return new SolanaChainClient(config, this.configService);
+      case SupportedChain.STELLAR:
+        return new StellarChainClient(config, this.configService);
       default:
         throw new Error(
           `No client implementation for chain type: ${config.name}`
