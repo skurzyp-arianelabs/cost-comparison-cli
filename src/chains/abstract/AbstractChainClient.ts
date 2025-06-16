@@ -6,23 +6,19 @@ import {
 } from '../../types';
 import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { CoinGeckoApiService } from '../../services/ApiService/CoinGeckoApiService';
-import { AbstractWalletService } from '../../services/WalletServices/AbstractWalletService';
 
 export abstract class AbstractChainClient {
   protected chainConfig: ExtendedChain;
   protected configManager: ConfigService;
   protected coinGeckoApiService: CoinGeckoApiService;
-  protected walletService: AbstractWalletService;
 
   constructor(
     chainConfig: ExtendedChain,
     configService: ConfigService,
-    walletService: AbstractWalletService
   ) {
     this.chainConfig = chainConfig;
     this.configManager = configService;
     this.coinGeckoApiService = new CoinGeckoApiService();
-    this.walletService = walletService;
   }
 
   // Native Fungible Token Operations

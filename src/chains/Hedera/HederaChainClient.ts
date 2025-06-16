@@ -54,11 +54,12 @@ export class HederaChainClient extends AbstractChainClient {
   private readonly evmWalletService: EvmWalletService;
   private readonly viemClient: WalletClient;
   private readonly viemPublicClient: PublicClient;
+  private readonly hederaWalletService: HederaWalletService;
 
   constructor(chainConfig: ExtendedChain, configService: ConfigService) {
-    const hederaWalletService = new HederaWalletService(configService);
-    super(chainConfig, configService, hederaWalletService);
-    this.hederaClient = this.walletService.getClient();
+    super(chainConfig, configService);
+    this.hederaWalletService = new HederaWalletService(configService);
+    this.hederaClient = this.hederaWalletService.getClient();
     this.hederaMirrorNodeService = new HederaMirrorNodeService(configService);
     this.evmWalletService = new EvmWalletService(
       configService,
@@ -335,7 +336,7 @@ export class HederaChainClient extends AbstractChainClient {
   async associateNativeFT(): Promise<TransactionResult> {
     // 0. create a new account
     const newAccountClient =
-      await this.walletService.createAccountAndReturnClient();
+      await this.hederaWalletService.createAccountAndReturnClient();
 
     await wait(5000);
 
@@ -395,7 +396,7 @@ export class HederaChainClient extends AbstractChainClient {
     // 1. create a new account
     const AUTOASSOCIATION_LIMIT = -1; // unlimited autoassociation
     const newAccountClient =
-      await this.walletService.createAccountAndReturnClient(
+      await this.hederaWalletService.createAccountAndReturnClient(
         AUTOASSOCIATION_LIMIT
       );
 
@@ -444,7 +445,7 @@ export class HederaChainClient extends AbstractChainClient {
   async associateNativeNFT(): Promise<TransactionResult> {
     // 0. create a new account
     const newAccountClient =
-      await this.walletService.createAccountAndReturnClient();
+      await this.hederaWalletService.createAccountAndReturnClient();
 
     // 1. Create a NFT native token
     const { tokenId } = await this.createAndDeployNativeNonFungibleToken();
@@ -507,7 +508,7 @@ export class HederaChainClient extends AbstractChainClient {
     // 0. Create a new account
     const AUTOASSOCIATION_LIMIT = -1; // unlimited autoassociation
     const newAccountClient =
-      await this.walletService.createAccountAndReturnClient(
+      await this.hederaWalletService.createAccountAndReturnClient(
         AUTOASSOCIATION_LIMIT
       );
 
@@ -648,7 +649,7 @@ export class HederaChainClient extends AbstractChainClient {
 
     // 3. Create a recipient account
     const recipientClient =
-      await this.walletService.createAccountAndReturnClient();
+      await this.hederaWalletService.createAccountAndReturnClient();
 
     // the getEvmCompatibleAddress uses mirrornode, which must first be refreshed with new data to contain the newly created account details
     await wait(5000);
@@ -782,7 +783,7 @@ export class HederaChainClient extends AbstractChainClient {
 
     // 3. Create a recipient account
     const recipientClient =
-      await this.walletService.createAccountAndReturnClient();
+      await this.hederaWalletService.createAccountAndReturnClient();
 
     // the getEvmCompatibleAddress uses mirrornode, which must first be refreshed with new data to contain the newly created account details
     await wait(5000);
