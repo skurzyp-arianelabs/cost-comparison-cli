@@ -10,6 +10,11 @@ const solPriceResponse = z.object({
 });
 
 
+const avaxPriceResponse = z.object({
+  'avalanche-2': z.object({ usd: z.number() }),
+});
+
+
 export class CoinGeckoApiService {
   async getHbarPriceInUsd() {
     const response = await fetch(
@@ -33,5 +38,17 @@ export class CoinGeckoApiService {
     }
 
     return solPriceResponse.parse(await response.json());
+  }
+
+  async getAvaxPriceInUsd() {
+    const response = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=avalanche-2&vs_currencies=usd',
+      { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+    );
+    if (!response.ok) {
+      throw new Error('Response is not valid');
+    }
+
+    return avaxPriceResponse.parse(await response.json());
   }
 }

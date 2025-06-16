@@ -1,11 +1,11 @@
 import { ChainClientFactory } from '../chains/factories/ChainClientFactory';
 import { ConfigService } from './ConfigService/ConfigService';
-import { IChainClient } from '../chains/IChainClient';
 import {
   SupportedChain,
   SupportedOperation,
   TransactionResult,
 } from '../types';
+import { AbstractChainClient } from '../chains/abstract/AbstractChainClient';
 
 export class CostComparisonTool {
   private configService: ConfigService;
@@ -64,7 +64,7 @@ export class CostComparisonTool {
   }
 
   private async executeConcurrentOperations(
-    clients: Array<{ chainId: string; client: IChainClient }>,
+    clients: Array<{ chainId: string; client: AbstractChainClient }>,
     operations: SupportedOperation[]
   ): Promise<TransactionResult[]> {
     const promises = clients.flatMap(({ client }) =>
@@ -81,7 +81,7 @@ export class CostComparisonTool {
   }
 
   private async executeSequentialOperations(
-    clients: Array<{ chainId: string; client: IChainClient }>,
+    clients: Array<{ chainId: string; client: AbstractChainClient }>,
     operations: SupportedOperation[]
   ): Promise<TransactionResult[]> {
     const results: TransactionResult[] = [];
