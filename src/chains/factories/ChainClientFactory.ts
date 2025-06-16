@@ -1,8 +1,8 @@
 import { ConfigService } from "../../services/ConfigService/ConfigService";
 import { SupportedChain } from "../../types";
-import { IChainClient } from "../IChainClient";
 import { HederaChainClient } from "../Hedera/HederaChainClient";
 import { SolanaChainClient } from "../SolanaChainClient";
+import { AbstractChainClient } from '../abstract/AbstractChainClient';
 
 export class ChainClientFactory {
   private configService: ConfigService;
@@ -11,7 +11,7 @@ export class ChainClientFactory {
     this.configService = configService;
   }
 
-  createClient(chainType: SupportedChain): IChainClient {
+  createClient(chainType: SupportedChain): AbstractChainClient {
     const config = this.configService.getChainConfig(chainType);
     if (!config) {
       throw new Error(`Unsupported chain: ${chainType}`);
