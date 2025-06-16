@@ -38,7 +38,6 @@ export class StellarWalletService extends AbstractWalletService {
     }
 
     this.issuerKeypair = Keypair.fromSecret(credentials.privateKey);
-
     this.networkPassphrase = getStellarNetworkPassphrase(this.chain.network);
   }
 
@@ -68,14 +67,23 @@ export class StellarWalletService extends AbstractWalletService {
       .addOperation(
         Operation.createAccount({
           destination: newKeypair.publicKey(),
-          startingBalance: '1.5',
+          startingBalance: '3.0000000',
         })
       )
       .setTimeout(30)
       .build();
 
     tx.sign(this.issuerKeypair);
-    await this.server.submitTransaction(tx);
+
+    try {
+      await this.server.submitTransaction(tx);
+    } catch (error: any) {
+      console.error(
+        'Error submitting createAccount tx:',
+        error?.response?.data || error?.message || error
+      );
+      throw new Error('Failed to create distributor account');
+    }
 
     return {
       accountAddress: newKeypair.publicKey(),
@@ -98,5 +106,13 @@ export class StellarWalletService extends AbstractWalletService {
 
   protected getSupportedChain(): SupportedChain {
     return this.supportedChain;
+  }
+
+  public getIssuerKeypair(): Keypair {
+    return this.issuerKeypair;
+  }
+
+  public getNetworkPassphrase(): string {
+    return this.networkPassphrase;
   }
 }
