@@ -41,7 +41,7 @@ export class AvalancheChainClient extends AbstractChainClient {
       this.viemPublicClient.getBlockNumber();
       return true;
     } catch (error) {
-      console.error('Hedera client health check failed:', error);
+      console.error('Avalanche client health check failed:', error);
       return false;
     }
   }
@@ -58,11 +58,11 @@ export class AvalancheChainClient extends AbstractChainClient {
     txHash: string,
     receipt: ViemTransactionReceipt
   ): Promise<TransactionResult> {
-    const hbarPriceBN = await this.getAvaxUsdPrice();
-    const totalCostTinybar = receipt.gasUsed * receipt.effectiveGasPrice;
-    const totalCostHbar = formatUnits(BigInt(totalCostTinybar), 18);
-    const usdCost = BigNumber(totalCostHbar)
-      .multipliedBy(hbarPriceBN)
+    const avaxPriceBN = await this.getAvaxUsdPrice();
+    const totalCostNavax = receipt.gasUsed * receipt.effectiveGasPrice;
+    const totalCostAvax = formatUnits(BigInt(totalCostNavax), 18);
+    const usdCost = BigNumber(totalCostAvax)
+      .multipliedBy(avaxPriceBN)
       .toString();
 
     return {
@@ -70,7 +70,7 @@ export class AvalancheChainClient extends AbstractChainClient {
       operation,
       transactionHash: txHash,
       gasUsed: receipt.gasUsed.toString(),
-      totalCost: totalCostHbar,
+      totalCost: totalCostAvax,
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
       usdCost,
       timestamp: Date.now().toString(),
