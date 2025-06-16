@@ -13,11 +13,13 @@ import {
   getContract,
   parseUnits,
   PublicClient,
+  stringToHex,
   TransactionReceipt as ViemTransactionReceipt,
   WalletClient,
 } from 'viem';
 import erc20Compiled from './contracts/ERC-20.json';
 import erc721Compiled from './contracts/ERC-721.json';
+import { get900BytesMessage } from '../../utils/utils';
 
 export class OptimismChainClient extends AbstractChainClient {
   private readonly evmWalletService: EvmWalletService;
@@ -40,7 +42,7 @@ export class OptimismChainClient extends AbstractChainClient {
       this.viemPublicClient.getBlockNumber();
       return true;
     } catch (error) {
-      console.error('Hedera client health check failed:', error);
+      console.error('Optimism client health check failed:', error);
       return false;
     }
   }
@@ -403,8 +405,36 @@ export class OptimismChainClient extends AbstractChainClient {
     );
   }
 
+  /**
+   * Key: hcs-message-submit
+   * Sending a message is handled as attaching the text to transfer transaction memo
+   * 0. Create an account that will receive transaction
+   * 1. Send transaction with an attached message
+   */
   async hcsSubmitMessage(): Promise<TransactionResult> {
-    throw new Error('Method not implemented.');
-  }
+    // 0. Create an account that will receive the message
+    const recipient = (await this.evmWalletService.createAccount())
+      .accountAddress;
+    const memoText = get900BytesMessage();
 
+    // 1. place the transaction with attached message
+    const transferHash = await this.viemClient.sendTransaction({
+      account: this.viemClient.account!,
+      to: recipient as `0x${string}`,
+      value: 1n,
+      data: stringToHex(memoText),
+      chain: this.viemClient.chain!,
+    });
+
+    const transferReceipt =
+      await this.viemPublicClient.waitForTransactionReceipt({
+        hash: transferHash,
+      });
+
+    return this.createViemTransactionResult(
+      SupportedOperation.HCS_MESSAGE_SUBMIT,
+      transferHash,
+      transferReceipt
+    );
+  }
 }
