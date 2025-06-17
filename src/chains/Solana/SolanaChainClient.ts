@@ -54,8 +54,10 @@ import {
   MEMO_PROGRAM_ID,
   metadata,
   MINT_ACCOUNT_SIZE,
-  SOLANA_MEMO_TEXT,
+  MINT_NATIVE_FT_AMOUNT,
+  TRANSFER_AMOUNT_LAMPORTS,
 } from './constants';
+import { MEMO_TEXT } from '../../utils/constants';
 
 export class SolanaChainClient extends AbstractChainClient {
   private connection: Connection;
@@ -103,14 +105,18 @@ export class SolanaChainClient extends AbstractChainClient {
     return umi;
   }
 
-  private async getFeeAndUsdCost(signature: string) {
+  private async getFeeAndUsdCost(signature: string, additionalLamports = 0) {
     const txDetails = await this.connection.getParsedTransaction(signature, {
       maxSupportedTransactionVersion: 0,
     });
+
     const fee = txDetails?.meta?.fee ?? 0;
+    const totalFee = fee + additionalLamports;
+
     await this.fetchSolPrice();
+
     const usdCost = calculateUsdCost(
-      fee,
+      totalFee,
       this.solPriceUSD,
       this.chainConfig.nativeCurrency.decimals
     );
@@ -331,7 +337,7 @@ export class SolanaChainClient extends AbstractChainClient {
       mint,
       senderTokenAccount.address,
       payer,
-      1_000_000
+      TRANSFER_AMOUNT_LAMPORTS
     );
 
     const transferSignature = await transfer(
@@ -340,7 +346,7 @@ export class SolanaChainClient extends AbstractChainClient {
       senderTokenAccount.address,
       recipientTokenAccount.address,
       payer,
-      1_000_000
+      TRANSFER_AMOUNT_LAMPORTS
     );
 
     const { fee, usdCost } = await this.getFeeAndUsdCost(transferSignature);
@@ -538,16 +544,18 @@ export class SolanaChainClient extends AbstractChainClient {
     const recipient = Keypair.generate();
 
     const tx = new Transaction().add(
-      ComputeBudgetProgram.setComputeUnitLimit({ units: 10000000 }),
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: MINT_NATIVE_FT_AMOUNT,
+      }),
       SystemProgram.transfer({
         fromPubkey: payer.publicKey,
         toPubkey: recipient.publicKey,
-        lamports: 1_000_000,
+        lamports: TRANSFER_AMOUNT_LAMPORTS,
       }),
       new TransactionInstruction({
         keys: [],
         programId: new PublicKey(MEMO_PROGRAM_ID),
-        data: Buffer.from(SOLANA_MEMO_TEXT, 'utf-8'),
+        data: Buffer.from(MEMO_TEXT, 'utf-8'),
       })
     );
 
@@ -555,7 +563,10 @@ export class SolanaChainClient extends AbstractChainClient {
       payer,
     ]);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(signature);
+    const { fee, usdCost } = await this.getFeeAndUsdCost(
+      signature,
+      TRANSFER_AMOUNT_LAMPORTS
+    );
 
     return {
       chain: SupportedChain.SOLANA,
