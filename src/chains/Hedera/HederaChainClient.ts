@@ -32,8 +32,8 @@ import {
 
 import { BigNumber } from 'bignumber.js';
 import { HederaWalletService } from '../../services/WalletServices/HederaWalletService';
-import erc20Compiled from './contracts/ERC-20.json';
-import erc721Compiled from './contracts/ERC-721.json';
+import erc20Compiled from '../../contracts/ERC-20.json';
+import erc721Compiled from '../../contracts/ERC-721.json';
 import { HederaMirrorNodeService } from '../../services/ApiService/HederaMirrorNodeService';
 import { getEvmCompatibleAddress, wait } from './hederaUtils';
 import { EvmWalletService } from '../../services/WalletServices/EvmWalletService';

@@ -41,7 +41,6 @@ export interface ChainConfig {
   explorerUrl: string;
 }
 
-// TODO: align with the required operations
 export enum SupportedOperation {
   // Native Tokens - Fungible
   CREATE_NATIVE_FT = 'create-native-ft',
