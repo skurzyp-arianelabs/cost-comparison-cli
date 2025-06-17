@@ -14,6 +14,7 @@ import {
   SupportedChain,
   WalletCredentials,
 } from '../../types';
+import { STELLAR_TX_TIMEOUT_SECONDS } from '../../chains/Stellar/constants';
 
 function getStellarNetworkPassphrase(network: string): string {
   return network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
@@ -25,6 +26,7 @@ export class StellarWalletService extends AbstractWalletService {
   private readonly server: Horizon.Server;
   private readonly issuerKeypair: Keypair;
   private readonly networkPassphrase: string;
+  private accountCreationPromise: Promise<void> = Promise.resolve();
 
   constructor(configService: ConfigService) {
     super(configService);
@@ -53,43 +55,54 @@ export class StellarWalletService extends AbstractWalletService {
     return this.server;
   }
 
-  public async createAccount(): Promise<AccountData> {
-    const newKeypair = Keypair.random();
+  // Ensures that only one createAccount operation runs at a time & prevents race conditions when issuerAccount is being reused in parallel.
+  private async withAccountCreationMutex<T>(fn: () => Promise<T>): Promise<T> {
+    let resolveCurrent!: () => void;
 
-    const issuerAccount = await this.server.loadAccount(
-      this.issuerKeypair.publicKey()
-    );
+    const previous = this.accountCreationPromise;
 
-    const tx = new TransactionBuilder(issuerAccount, {
-      fee: BASE_FEE,
-      networkPassphrase: this.networkPassphrase,
-    })
-      .addOperation(
-        Operation.createAccount({
-          destination: newKeypair.publicKey(),
-          startingBalance: '3.0000000',
-        })
-      )
-      .setTimeout(30)
-      .build();
+    this.accountCreationPromise = new Promise((resolve) => {
+      resolveCurrent = resolve;
+    });
 
-    tx.sign(this.issuerKeypair);
+    await previous;
 
     try {
-      await this.server.submitTransaction(tx);
-    } catch (error: any) {
-      console.error(
-        'Error submitting createAccount tx:',
-        error?.response?.data || error?.message || error
-      );
-      throw new Error('Failed to create distributor account');
+      return await fn();
+    } finally {
+      resolveCurrent();
     }
+  }
 
-    return {
-      accountAddress: newKeypair.publicKey(),
-      privateKey: newKeypair.secret(),
-      publicKey: newKeypair.publicKey(),
-    };
+  public async createAccount(): Promise<AccountData> {
+    return this.withAccountCreationMutex(async () => {
+      const newKeypair = Keypair.random();
+      const issuerAccount = await this.server.loadAccount(
+        this.issuerKeypair.publicKey()
+      );
+
+      const tx = new TransactionBuilder(issuerAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: this.networkPassphrase,
+      })
+        .addOperation(
+          Operation.createAccount({
+            destination: newKeypair.publicKey(),
+            startingBalance: '3.0000000',
+          })
+        )
+        .setTimeout(STELLAR_TX_TIMEOUT_SECONDS)
+        .build();
+
+      tx.sign(this.issuerKeypair);
+      await this.server.submitTransaction(tx);
+
+      return {
+        accountAddress: newKeypair.publicKey(),
+        privateKey: newKeypair.secret(),
+        publicKey: newKeypair.publicKey(),
+      };
+    });
   }
 
   public async createAccountAndReturnClient(): Promise<{
