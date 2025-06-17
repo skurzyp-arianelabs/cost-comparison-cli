@@ -1,17 +1,19 @@
 import { cliConfig } from './utils/cli';
-import { CostComparisonToolRefactored } from './services/CostComparisonToolRefactored';
+import { CostComparisonTool } from './services/CostComparisonTool';
 
 async function main() {
   try {
     console.log('--- CLI FLAGS ---');
     console.log(cliConfig);
 
-    // const tool = new CostComparisonTool();
-    const tool = new CostComparisonToolRefactored();
+    const tool = new CostComparisonTool();
     const response = await tool.run(cliConfig.chains, cliConfig.operations);
     console.log(response);
   } catch (error) {
-    console.error('An error occurred while running the CostComparisonTool:', error);
+    console.error(
+      'An error occurred while running the CostComparisonTool:',
+      error
+    );
   }
 }
 

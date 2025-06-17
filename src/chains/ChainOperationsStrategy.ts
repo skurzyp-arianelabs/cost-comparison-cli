@@ -1,12 +1,12 @@
-import { SupportedOperation, TransactionResult } from '../types';
+import { SupportedOperation, FullTransactionResult } from '../types';
 import { IChainOperations } from './abstract/IChainOperations';
 
 export class ChainOperationsStrategy {
   static async executeOperation(
     operation: SupportedOperation,
     operations: IChainOperations
-  ): Promise<TransactionResult> {
-    const operationMap: Record<SupportedOperation, () => Promise<TransactionResult>> = {
+  ): Promise<FullTransactionResult> {
+    const operationMap: Record<SupportedOperation, () => Promise<FullTransactionResult>> = {
       [SupportedOperation.CREATE_NATIVE_FT]: () => operations.createNativeFT(),
       [SupportedOperation.ASSOCIATE_NATIVE_FT]: () => operations.associateNativeFT(),
       [SupportedOperation.MINT_NATIVE_FT]: () => operations.mintNativeFT(),

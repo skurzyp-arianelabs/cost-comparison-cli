@@ -1,42 +1,57 @@
-import { ExtendedChain, TransactionResult } from '../../types';
+import { ChainConfig, FullTransactionResult } from '../../types';
 
 export interface IChainOperations {
   // Native Fungible Token Operations
-  createNativeFT(): Promise<TransactionResult>;
-  associateNativeFT(): Promise<TransactionResult>;
-  mintNativeFT(): Promise<TransactionResult>;
-  transferNativeFT(): Promise<TransactionResult>;
+  createNativeFT(): Promise<FullTransactionResult>;
+
+  associateNativeFT(): Promise<FullTransactionResult>;
+
+  mintNativeFT(): Promise<FullTransactionResult>;
+
+  transferNativeFT(): Promise<FullTransactionResult>;
 
   // ERC20 Operations - SDK
-  createERC20_SDK(): Promise<TransactionResult>;
-  mintERC20_SDK(): Promise<TransactionResult>;
-  transferERC20_SDK(): Promise<TransactionResult>;
+  createERC20_SDK(): Promise<FullTransactionResult>;
+
+  mintERC20_SDK(): Promise<FullTransactionResult>;
+
+  transferERC20_SDK(): Promise<FullTransactionResult>;
 
   // ERC20 Operations - RPC
-  createERC20_RPC(): Promise<TransactionResult>;
-  mintERC20_RPC(): Promise<TransactionResult>;
-  transferERC20_RPC(): Promise<TransactionResult>;
+  createERC20_RPC(): Promise<FullTransactionResult>;
+
+  mintERC20_RPC(): Promise<FullTransactionResult>;
+
+  transferERC20_RPC(): Promise<FullTransactionResult>;
 
   // Native NFT Operations
-  createNativeNFT(): Promise<TransactionResult>;
-  associateNativeNFT(): Promise<TransactionResult>;
-  mintNativeNFT(): Promise<TransactionResult>;
-  transferNativeNFT(): Promise<TransactionResult>;
+  createNativeNFT(): Promise<FullTransactionResult>;
+
+  associateNativeNFT(): Promise<FullTransactionResult>;
+
+  mintNativeNFT(): Promise<FullTransactionResult>;
+
+  transferNativeNFT(): Promise<FullTransactionResult>;
 
   // ERC721 Operations - SDK
-  createERC721_SDK(): Promise<TransactionResult>;
-  mintERC721_SDK(): Promise<TransactionResult>;
-  transferERC721_SDK(): Promise<TransactionResult>;
+  createERC721_SDK(): Promise<FullTransactionResult>;
+
+  mintERC721_SDK(): Promise<FullTransactionResult>;
+
+  transferERC721_SDK(): Promise<FullTransactionResult>;
 
   // ERC721 Operations - RPC
-  createERC721_RPC(): Promise<TransactionResult>;
-  mintERC721_RPC(): Promise<TransactionResult>;
-  transferERC721_RPC(): Promise<TransactionResult>;
+  createERC721_RPC(): Promise<FullTransactionResult>;
+
+  mintERC721_RPC(): Promise<FullTransactionResult>;
+
+  transferERC721_RPC(): Promise<FullTransactionResult>;
 
   // HCS Operation
-  hcsSubmitMessage(): Promise<TransactionResult>;
+  hcsSubmitMessage(): Promise<FullTransactionResult>;
 
   // Utility
-  getChainInfo(): ExtendedChain;
+  getChainInfo(): ChainConfig;
+
   isHealthy(): Promise<boolean>;
 }

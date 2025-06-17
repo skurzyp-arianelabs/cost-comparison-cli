@@ -1,19 +1,23 @@
-import { Chain } from 'viem';
-
-export interface TransactionResult {
+export interface FullTransactionResult extends TransactionResult {
   chain: SupportedChain;
   operation: SupportedOperation;
-  transactionHash?: string;
-  gasUsed?: string;
-  gasPrice?: string;
-  totalCost?: string;
   nativeCurrencySymbol?: string;
   usdCost?: string;
   timestamp: string;
-  status: 'success' | 'failed';
-  error?: string;
-  blockNumber?: string;
   confirmations?: number;
+}
+
+export interface TransactionResult {
+  transactionHash?: string;
+  gasUsedL1?: string | undefined;
+  gasPriceL1?: string | undefined;
+  gasUsedL2?: string | undefined;
+  gasPriceL2?: string | undefined;
+  totalCost?: string | undefined;
+  status: 'success' | 'failed';
+  timestamp: string;
+  error?: string | undefined;
+  blockNumber?: string;
 }
 
 export enum SupportedChain {
@@ -32,13 +36,19 @@ export interface WalletCredentials {
 }
 
 export interface ChainConfig {
-  id: string;
-  name: string;
   type: SupportedChain;
-  rpcUrl?: string;
-  networkId?: string;
-  nativeCurrency: string;
-  explorerUrl: string;
+  network: NetworkType;
+  name: string;
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+  rpcUrls: {
+    default: {
+      http: string[];
+    };
+  };
 }
 
 export enum SupportedOperation {
@@ -89,8 +99,3 @@ export type AccountData = {
   privateKey: string;
   publicKey: string;
 };
-
-export interface ExtendedChain extends Chain {
-  type: SupportedChain;
-  network: NetworkType;
-}
