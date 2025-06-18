@@ -35,12 +35,6 @@ export class HederaMirrorNodeService {
         'accept': 'application/json',
       },
     });
-
-    this.axiosInstance.interceptors.request.use((config) => {
-      const fullUrl = `${config.baseURL}${config.url}`;
-      console.debug(`[HederaMirrorNodeService] Requesting: ${fullUrl}`);
-      return config;
-    });
   }
 
   async getAccountType(accountId: AccountId): Promise<HederaKeyType> {

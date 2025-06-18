@@ -1,5 +1,8 @@
-import { HederaKeyType, HederaMirrorNodeService } from '../../services/ApiService/HederaMirrorNodeService';
-import { AccountId } from '@hashgraph/sdk';
+import {
+  HederaKeyType,
+  HederaMirrorNodeService,
+} from '../../services/ApiService/HederaMirrorNodeService';
+import { AccountId, PrivateKey } from '@hashgraph/sdk';
 
 /**
  * Returns an EVM-compatible address for the given Hedera account.
@@ -23,6 +26,10 @@ export async function getEvmCompatibleAddress(
   return await mirrorNodeService.getEvmAddress(accountId);
 }
 
-export function wait(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+export function parseDerKeyToHex(derKey: string): `0x${string}` {
+  const der = PrivateKey.fromStringDer(derKey);
+  const raw = der.toBytesRaw();
+
+  const hex = Buffer.from(raw).toString('hex').padStart(64, '0');
+  return `0x${hex}`;
 }
