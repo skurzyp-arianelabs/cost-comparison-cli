@@ -70,7 +70,7 @@ export class RippleChainOperations implements IChainOperations {
   }
 
   private async calculateTransactionCost(transactionResult: TxResponse<SubmittableTransaction>, transferAmount: number = 0): Promise<number> {
-    return parseInt(transactionResult.result.tx_json.Fee || "0") + transferAmount / 1_000_000 * (await this.getRipplePrice());
+    return parseInt((transactionResult.result.tx_json.Fee || "0") + transferAmount) / 1_000_000 * (await this.getRipplePrice());
   }
 
   getChainInfo() {
