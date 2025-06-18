@@ -3,6 +3,7 @@ import { z } from 'zod';
 const coinGeckoSchemas = {
   'hedera-hashgraph': z.object({ 'hedera-hashgraph': z.object({ usd: z.number() }) }),
   'solana': z.object({ 'solana': z.object({ usd: z.number() }) }),
+  'ripple': z.object({ 'ripple': z.object({ usd: z.number() }) }),
 };
 
 export class CoinGeckoApiService {
@@ -28,5 +29,9 @@ export class CoinGeckoApiService {
 
   async getSolPriceInUsd() {
     return this.getPriceInUsd('solana', coinGeckoSchemas['solana']);
+  }
+
+  async getRipplePriceInUsd() {
+    return (await this.getPriceInUsd('ripple', coinGeckoSchemas['ripple'])).ripple.usd;
   }
 }
