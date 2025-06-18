@@ -16,32 +16,37 @@ export class SolanaChainOperations implements IChainOperations {
   private coinGeckoApiService: CoinGeckoApiService;
   private nativeSdkOps: ISolanaNativeOperations;
   private chainConfig: ChainConfig;
+  private solPriceInUsd: BigNumber | undefined;
 
   constructor(private configService: ConfigService) {
     this.chainConfig = this.configService.getChainConfig(SupportedChain.SOLANA);
     this.coinGeckoApiService = new CoinGeckoApiService();
     this.nativeSdkOps = new SolanaNativeOperations(configService);
+    this.solPriceInUsd = undefined;
   }
 
-  private async getSolPriceInUsd(): Promise<BigNumber> {
-    const solUSDPrice = (await this.coinGeckoApiService.getSolPriceInUsd())[
+  private async getSolUsdPrice(): Promise<BigNumber> {
+    if (this.solPriceInUsd) return this.solPriceInUsd;
+
+    const opUSDPrice = (await this.coinGeckoApiService.getSolPriceInUsd())[
       'solana'
     ].usd;
-    return new BigNumber(solUSDPrice);
+    this.solPriceInUsd = new BigNumber(opUSDPrice);
+    return this.solPriceInUsd;
   }
 
   async generateFullResult(
     partialResult: TransactionResult,
     operation: SupportedOperation
   ): Promise<FullTransactionResult> {
-    const solPriceBN = await this.getSolPriceInUsd();
+    const solPriceInUsd = await this.getSolUsdPrice();
 
     return {
       ...partialResult,
       chain: this.chainConfig.type,
       operation,
       usdCost: new BigNumber(partialResult.totalCost!)
-        .multipliedBy(solPriceBN)
+        .multipliedBy(solPriceInUsd)
         .toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
