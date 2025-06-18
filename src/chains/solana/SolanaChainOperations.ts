@@ -1,6 +1,4 @@
 import { IChainOperations } from '../abstract/IChainOperations';
-import { INativeHederaSdkOperations } from './IHederaNativeOperations';
-import { IEvmRpcOperations } from '../evm/IEvmRpcOperations';
 import {
   ChainConfig,
   FullTransactionResult,
@@ -11,50 +9,44 @@ import {
 import { BigNumber } from 'bignumber.js';
 import { CoinGeckoApiService } from '../../services/ApiService/CoinGeckoApiService';
 import { ConfigService } from '../../services/ConfigService/ConfigService';
-import { HederaNativeOperations } from './HederaNativeOperations';
-import { EvmRpcOperations } from '../evm/EvmRpcOperations';
-import { parseDerKeyToHex } from './hederaUtils';
+import { SolanaNativeOperations } from './SolanaNativeOperations';
+import { ISolanaNativeOperations } from './ISolanaNativeOperations';
 
-export class HederaChainOperations implements IChainOperations {
+export class SolanaChainOperations implements IChainOperations {
   private coinGeckoApiService: CoinGeckoApiService;
-  private nativeSdkOps: INativeHederaSdkOperations;
+  private nativeSdkOps: ISolanaNativeOperations;
   private chainConfig: ChainConfig;
-  private evmRpcOps: IEvmRpcOperations;
+  private solPriceInUsd: BigNumber | undefined;
 
   constructor(private configService: ConfigService) {
-    this.chainConfig = this.configService.getChainConfig(SupportedChain.HEDERA);
-    const privateKey = this.configService.getWalletCredentials(
-      this.chainConfig.type
-    ).privateKey!;
-    const hexPrivateKey = parseDerKeyToHex(privateKey);
-
+    this.chainConfig = this.configService.getChainConfig(SupportedChain.SOLANA);
     this.coinGeckoApiService = new CoinGeckoApiService();
-    this.evmRpcOps = new EvmRpcOperations(
-      this.chainConfig.rpcUrls.default.http[0]!,
-      hexPrivateKey
-    );
-    this.nativeSdkOps = new HederaNativeOperations(configService);
+    this.nativeSdkOps = new SolanaNativeOperations(configService);
+    this.solPriceInUsd = undefined;
   }
 
-  private async getHbarUsdPrice(): Promise<BigNumber> {
-    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
-      'hedera-hashgraph'
+  private async getSolUsdPrice(): Promise<BigNumber> {
+    if (this.solPriceInUsd) return this.solPriceInUsd;
+
+    const opUSDPrice = (await this.coinGeckoApiService.getSolPriceInUsd())[
+      'solana'
     ].usd;
-    return new BigNumber(hbarUSDPrice);
+    this.solPriceInUsd = new BigNumber(opUSDPrice);
+    return this.solPriceInUsd;
   }
 
   async generateFullResult(
     partialResult: TransactionResult,
     operation: SupportedOperation
   ): Promise<FullTransactionResult> {
-    const hbarPriceBN = await this.getHbarUsdPrice();
+    const solPriceInUsd = await this.getSolUsdPrice();
 
     return {
       ...partialResult,
       chain: this.chainConfig.type,
       operation,
       usdCost: new BigNumber(partialResult.totalCost!)
-        .multipliedBy(hbarPriceBN)
+        .multipliedBy(solPriceInUsd)
         .toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
@@ -126,7 +118,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async createERC20_SDK(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.createERC20_SDK();
+    const result = await this.nativeSdkOps.createNativeFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.CREATE_ERC20_SDK
@@ -134,7 +126,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async mintERC20_SDK(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.mintERC20_SDK();
+    const result = await this.nativeSdkOps.mintNativeFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.MINT_ERC20_SDK
@@ -142,7 +134,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async transferERC20_SDK(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.transferERC20_SDK();
+    const result = await this.nativeSdkOps.transferNativeFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.TRANSFER_ERC20_SDK
@@ -150,7 +142,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async createERC721_SDK(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.createERC721_SDK();
+    const result = await this.nativeSdkOps.createNativeNFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.CREATE_ERC721_SDK
@@ -158,7 +150,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async mintERC721_SDK(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.mintERC721_SDK();
+    const result = await this.nativeSdkOps.mintNativeNFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.MINT_ERC721_SDK
@@ -166,7 +158,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async transferERC721_SDK(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.transferERC721_SDK();
+    const result = await this.nativeSdkOps.transferNativeNFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.TRANSFER_ERC721_SDK
@@ -174,7 +166,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async hcsSubmitMessage(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.hcsSubmitMessage();
+    const result = await this.nativeSdkOps.submitMemoMessage();
     return await this.generateFullResult(
       result,
       SupportedOperation.HCS_MESSAGE_SUBMIT
@@ -183,7 +175,7 @@ export class HederaChainOperations implements IChainOperations {
 
   // Delegate EVM RPC operations
   async createERC20_RPC(): Promise<FullTransactionResult> {
-    const result = await this.evmRpcOps.createERC20_RPC();
+    const result = await this.nativeSdkOps.createNativeFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.CREATE_ERC20_HARDHAT
@@ -191,7 +183,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async mintERC20_RPC(): Promise<FullTransactionResult> {
-    const result = await this.evmRpcOps.mintERC20_RPC();
+    const result = await this.nativeSdkOps.mintNativeFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.MINT_ERC20_HARDHAT
@@ -199,7 +191,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async transferERC20_RPC(): Promise<FullTransactionResult> {
-    const result = await this.evmRpcOps.transferERC20_RPC();
+    const result = await this.nativeSdkOps.transferNativeFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.TRANSFER_ERC20_HARDHAT
@@ -207,7 +199,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async createERC721_RPC(): Promise<FullTransactionResult> {
-    const result = await this.evmRpcOps.createERC721_RPC();
+    const result = await this.nativeSdkOps.createNativeNFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.CREATE_ERC721_HARDHAT
@@ -215,7 +207,7 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async mintERC721_RPC(): Promise<FullTransactionResult> {
-    const result = await this.evmRpcOps.mintERC721_RPC();
+    const result = await this.nativeSdkOps.mintNativeNFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.MINT_ERC721_HARDHAT
@@ -223,18 +215,15 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   async transferERC721_RPC(): Promise<FullTransactionResult> {
-    const result = await this.evmRpcOps.transferERC721_RPC();
+    const result = await this.nativeSdkOps.transferNativeNFT();
     return await this.generateFullResult(
       result,
       SupportedOperation.TRANSFER_ERC721_HARDHAT
     );
   }
 
-  // utils
   async isHealthy(): Promise<boolean> {
-    const evmHealthy = await this.evmRpcOps.isHealthy();
-    const nativeHealthy = await this.nativeSdkOps.isHealthy();
-    return evmHealthy && nativeHealthy;
+    return await this.nativeSdkOps.isHealthy();
   }
 
   getChainInfo(): ChainConfig {
