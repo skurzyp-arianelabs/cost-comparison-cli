@@ -20,6 +20,7 @@ export class HederaChainOperations implements IChainOperations {
   private nativeSdkOps: INativeHederaSdkOperations;
   private chainConfig: ChainConfig;
   private evmRpcOps: IEvmRpcOperations;
+  private hederaPriceInUsd: BigNumber | undefined;
 
   constructor(private configService: ConfigService) {
     this.chainConfig = this.configService.getChainConfig(SupportedChain.HEDERA);
@@ -37,10 +38,14 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   private async getHbarUsdPrice(): Promise<BigNumber> {
+    if (this.hederaPriceInUsd) return this.hederaPriceInUsd;
+
     const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
       'hedera-hashgraph'
     ].usd;
-    return new BigNumber(hbarUSDPrice);
+
+    this.hederaPriceInUsd = new BigNumber(hbarUSDPrice);
+    return this.hederaPriceInUsd;
   }
 
   async generateFullResult(
