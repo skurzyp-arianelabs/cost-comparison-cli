@@ -449,6 +449,10 @@ export class StellarNativeOperations implements IStellarNativeOperations {
       distributorAccountLoaded,
     } = await this.prepareStellarAssetContext('MEMO');
 
+    console.warn(
+      '⚠️  Warning: Stellar supports memos up to 28 bytes. Longer data will be rejected.'
+    );
+
     const memoTransaction = new TransactionBuilder(distributorAccountLoaded, {
       fee: BASE_FEE,
       networkPassphrase,
