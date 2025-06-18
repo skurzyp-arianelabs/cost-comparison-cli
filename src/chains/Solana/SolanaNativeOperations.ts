@@ -1,79 +1,113 @@
+import bs58 from 'bs58';
 import {
-  Keypair,
-  Connection,
-  LAMPORTS_PER_SOL,
-  Transaction,
-  SystemProgram,
-  sendAndConfirmTransaction,
-  PublicKey,
+  Commitment,
   ComputeBudgetProgram,
+  Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  sendAndConfirmTransaction,
+  SystemProgram,
+  Transaction,
   TransactionInstruction,
 } from '@solana/web3.js';
+import { ConfigService } from '../../services/ConfigService/ConfigService';
+import { ISolanaNativeOperations } from './ISolanaNativeOperations';
 import {
-  TOKEN_PROGRAM_ID,
+  AccountData,
+  ChainConfig,
+  SupportedChain,
+  TransactionResult,
+} from '../../types';
+import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
   createInitializeMintInstruction,
   createMint,
+  createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
   getMinimumBalanceForRentExemptMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
+  TOKEN_PROGRAM_ID,
   transfer,
-  createTransferCheckedInstruction,
 } from '@solana/spl-token';
+import {
+  DECIMALS,
+  MEMO_PROGRAM_ID,
+  MINT_ACCOUNT_SIZE,
+  MINT_NATIVE_FT_AMOUNT,
+  TRANSFER_AMOUNT_LAMPORTS,
+  metadata,
+} from './constants';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import {
+  createSignerFromKeypair,
+  generateSigner,
+  percentAmount,
+  signerIdentity,
+  Umi,
+  publicKey as getMetaplexPublicKey,
+} from '@metaplex-foundation/umi';
 import {
   createV1,
   mintV1,
   mplTokenMetadata,
   TokenStandard,
 } from '@metaplex-foundation/mpl-token-metadata';
-import {
-  createSignerFromKeypair,
-  generateSigner,
-  percentAmount,
-  signerIdentity,
-  publicKey as getMetaplexPublicKey,
-  Umi,
-} from '@metaplex-foundation/umi';
-import BigNumber from 'bignumber.js';
-import bs58 from 'bs58';
-import { AbstractChainClient } from '../abstract/AbstractChainClient';
-import {
-  ExtendedChain,
-  SupportedChain,
-  SupportedOperation,
-  TransactionResult,
-} from '../../types';
-import { ConfigService } from '../../services/ConfigService/ConfigService';
-import { SolanaWalletService } from '../../services/WalletServices/SolanaWalletService';
-import { calculateUsdCost } from '../../utils/calculateUsdCost';
-import {
-  DECIMALS,
-  MEMO_PROGRAM_ID,
-  metadata,
-  MINT_ACCOUNT_SIZE,
-  MINT_NATIVE_FT_AMOUNT,
-  TRANSFER_AMOUNT_LAMPORTS,
-} from './constants';
 import { MEMO_TEXT } from '../../utils/constants';
 
-export class SolanaChainClient extends AbstractChainClient {
+export class SolanaNativeOperations implements ISolanaNativeOperations {
+  private configService: ConfigService;
+  private chainConfig: ChainConfig;
   private connection: Connection;
-  private solPriceUSD!: BigNumber;
 
-  constructor(chainConfig: ExtendedChain, configService: ConfigService) {
-    const solanaWalletService = new SolanaWalletService(configService);
-    super(chainConfig, configService, solanaWalletService);
-    this.connection = solanaWalletService.getClient();
+  constructor(configService: ConfigService) {
+    this.configService = configService;
+    this.chainConfig = configService.getChainConfig(SupportedChain.SOLANA);
+    this.connection = this.initClient();
   }
 
-  private async fetchSolPrice(): Promise<void> {
-    if (!this.solPriceUSD) {
-      const solPrice = await this.coinGeckoApiService.getSolPriceInUsd();
-      this.solPriceUSD = new BigNumber(solPrice.solana.usd);
-    }
+  protected initClient(): Connection {
+    const rpcUrl = this.chainConfig.rpcUrls.default.http[0]!;
+    const commitment: Commitment = 'confirmed';
+    return new Connection(rpcUrl, commitment);
+  }
+
+  public async createAccount(): Promise<AccountData> {
+    const privateKeyHex = this.configService.getWalletCredentials(
+      SupportedChain.SOLANA
+    ).privateKey!;
+    const keypair = Keypair.fromSecretKey(
+      Uint8Array.from(Buffer.from(privateKeyHex, 'hex'))
+    );
+
+    return {
+      accountAddress: keypair.publicKey.toBase58(),
+      publicKey: keypair.publicKey.toBase58(),
+      privateKey: privateKeyHex,
+    };
+  }
+
+  // Helper method to format the transaction results
+  private async formatTransactionResult(
+    transactionSignature: string
+  ): Promise<TransactionResult> {
+    const txDetails = await this.connection.getParsedTransaction(
+      transactionSignature,
+      {
+        maxSupportedTransactionVersion: 0,
+      }
+    );
+
+    const fee = txDetails?.meta?.fee ?? 0;
+
+    return {
+      transactionHash: transactionSignature,
+      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
+      timestamp: txDetails?.blockTime?.toString()!,
+      status: 'success',
+    };
   }
 
   async isHealthy(): Promise<boolean> {
@@ -87,8 +121,7 @@ export class SolanaChainClient extends AbstractChainClient {
   }
 
   private async getPayerFromWalletService(): Promise<Keypair> {
-    const solanaWalletService = this.walletService as SolanaWalletService;
-    const { privateKey } = await solanaWalletService.createAccount();
+    const { privateKey } = await this.createAccount();
     return Keypair.fromSecretKey(
       Uint8Array.from(Buffer.from(privateKey, 'hex'))
     );
@@ -103,24 +136,6 @@ export class SolanaChainClient extends AbstractChainClient {
     umi.use(signerIdentity(umiWalletSigner));
     umi.use(mplTokenMetadata());
     return umi;
-  }
-
-  private async getFeeAndUsdCost(signature: string, additionalLamports = 0) {
-    const txDetails = await this.connection.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-    });
-
-    const fee = txDetails?.meta?.fee ?? 0;
-    const totalFee = fee + additionalLamports;
-
-    await this.fetchSolPrice();
-
-    const usdCost = calculateUsdCost(
-      totalFee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
-    );
-    return { fee, usdCost };
   }
 
   private async associateTokenAccount(
@@ -192,32 +207,7 @@ export class SolanaChainClient extends AbstractChainClient {
       [payer, mintKeypair]
     );
 
-    const txDetails = await this.connection.getParsedTransaction(
-      createSignature,
-      {
-        maxSupportedTransactionVersion: 0,
-      }
-    );
-
-    const fee = txDetails?.meta?.fee ?? 0;
-    await this.fetchSolPrice();
-    const usdCost = calculateUsdCost(
-      fee,
-      this.solPriceUSD,
-      this.chainConfig.nativeCurrency.decimals
-    );
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.CREATE_NATIVE_FT,
-      transactionHash: createSignature,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(createSignature);
   }
 
   async associateNativeFT(): Promise<TransactionResult> {
@@ -238,19 +228,7 @@ export class SolanaChainClient extends AbstractChainClient {
       recipient.publicKey
     );
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(signature);
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
-      transactionHash: signature,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(signature);
   }
 
   async mintNativeFT(): Promise<TransactionResult> {
@@ -290,19 +268,7 @@ export class SolanaChainClient extends AbstractChainClient {
       [payer]
     );
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(mintSignature);
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.MINT_NATIVE_FT,
-      transactionHash: createSignature,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(mintSignature);
   }
 
   async transferNativeFT(): Promise<TransactionResult> {
@@ -349,33 +315,7 @@ export class SolanaChainClient extends AbstractChainClient {
       TRANSFER_AMOUNT_LAMPORTS
     );
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(transferSignature);
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.TRANSFER_NATIVE_FT,
-      transactionHash: transferSignature,
-      gasUsed: fee?.toString() ?? '',
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
-  }
-
-  async createERC20_RPC(): Promise<TransactionResult> {
-    const result = await this.createNativeFT();
-    return { ...result, operation: SupportedOperation.CREATE_ERC20_HARDHAT };
-  }
-
-  async mintERC20_RPC(): Promise<TransactionResult> {
-    const result = await this.mintNativeFT();
-    return { ...result, operation: SupportedOperation.MINT_ERC20_HARDHAT };
-  }
-
-  async transferERC20_RPC(): Promise<TransactionResult> {
-    const result = await this.transferNativeFT();
-    return { ...result, operation: SupportedOperation.TRANSFER_ERC20_HARDHAT };
+    return this.formatTransactionResult(transferSignature);
   }
 
   async createNativeNFT(): Promise<TransactionResult> {
@@ -386,19 +326,7 @@ export class SolanaChainClient extends AbstractChainClient {
     const result = await createTransaction.sendAndConfirm(umi);
     const signatureBase58 = bs58.encode(result.signature as Uint8Array);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(signatureBase58);
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.CREATE_NATIVE_NFT,
-      transactionHash: signatureBase58,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(signatureBase58);
   }
 
   async associateNativeNFT(): Promise<TransactionResult> {
@@ -414,19 +342,7 @@ export class SolanaChainClient extends AbstractChainClient {
       payer.publicKey
     );
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(signature);
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.ASSOCIATE_NATIVE_NFT,
-      transactionHash: signature,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(signature);
   }
 
   async mintNativeNFT(): Promise<TransactionResult> {
@@ -456,19 +372,7 @@ export class SolanaChainClient extends AbstractChainClient {
     });
     const signatureBase58 = bs58.encode(result.signature as Uint8Array);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(signatureBase58);
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.MINT_NATIVE_NFT,
-      transactionHash: signatureBase58,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(signatureBase58);
   }
 
   async transferNativeNFT(): Promise<TransactionResult> {
@@ -524,22 +428,10 @@ export class SolanaChainClient extends AbstractChainClient {
       [payer]
     );
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(transferSignature);
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.TRANSFER_NATIVE_NFT,
-      transactionHash: transferSignature,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(transferSignature);
   }
 
-  async hcsSubmitMessage(): Promise<TransactionResult> {
+  async submitMemoMessage(): Promise<TransactionResult> {
     const payer = await this.getPayerFromWalletService();
     const recipient = Keypair.generate();
 
@@ -563,21 +455,6 @@ export class SolanaChainClient extends AbstractChainClient {
       payer,
     ]);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(
-      signature,
-      TRANSFER_AMOUNT_LAMPORTS
-    );
-
-    return {
-      chain: SupportedChain.SOLANA,
-      operation: SupportedOperation.HCS_MESSAGE_SUBMIT,
-      transactionHash: signature,
-      gasUsed: fee.toString(),
-      totalCost: (fee / LAMPORTS_PER_SOL).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: Date.now().toLocaleString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(signature);
   }
 }
