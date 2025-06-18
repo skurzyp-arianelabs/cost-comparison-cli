@@ -11,6 +11,7 @@ import { CoinGeckoApiService } from '../../services/ApiService/CoinGeckoApiServi
 import { EvmRpcOperations } from '../evm/EvmRpcOperations';
 import { IEvmRpcOperations } from '../evm/IEvmRpcOperations';
 import { BigNumber } from 'bignumber.js';
+import { formatUnits } from 'viem';
 
 export class AvalancheChainOperations implements IChainOperations {
   private coinGeckoApiService: CoinGeckoApiService;
@@ -45,13 +46,29 @@ export class AvalancheChainOperations implements IChainOperations {
   ): Promise<FullTransactionResult> {
     const avaxPriceBN = await this.getAvaxUsdPrice();
 
+    const gasUsed = new BigNumber(partialResult.gasUsed ?? 0);
+    const gasPrice = new BigNumber(partialResult.gasPrice ?? 0);
+    const additionalCost = new BigNumber(partialResult.additionalCost ?? 0);
+
+    const totalCostWei = gasUsed
+      .multipliedBy(gasPrice)
+      .plus(additionalCost);
+
+    const totalCostAvax = new BigNumber(
+      formatUnits(
+        BigInt(totalCostWei.toFixed(0)),
+        this.chainConfig.nativeCurrency.decimals
+      )
+    );
+
+    const usdCostBN = totalCostAvax.multipliedBy(avaxPriceBN);
+
     return {
       ...partialResult,
       chain: this.chainConfig.type,
       operation,
-      usdCost: new BigNumber(partialResult.totalCost!)
-        .multipliedBy(avaxPriceBN)
-        .toString(),
+      totalCost: totalCostAvax.toString(),
+      usdCost: usdCostBN.toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
   }

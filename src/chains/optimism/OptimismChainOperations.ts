@@ -56,8 +56,6 @@ export class OptimismChainOperations implements IChainOperations {
     const additionalCost = new BigNumber(partialResult.additionalCost ?? 0);
     const feeL1 = new BigNumber(partialResult.feeL1 ?? 0);
 
-    console.log('L2',gasUsed.multipliedBy(gasPrice).toString());
-    console.log('feeL1',feeL1.toString());
 
     const totalCostWei = gasUsed
       .multipliedBy(gasPrice)
