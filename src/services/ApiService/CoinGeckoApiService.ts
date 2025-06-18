@@ -6,6 +6,7 @@ const coinGeckoSchemas = {
   }),
   solana: z.object({ solana: z.object({ usd: z.number() }) }),
   stellar: z.object({ stellar: z.object({ usd: z.number() }) }),
+  'avalanche-2': z.object({ 'avalanche-2': z.object({ usd: z.number() }) }),
 };
 
 export class CoinGeckoApiService {
@@ -38,5 +39,9 @@ export class CoinGeckoApiService {
 
   async getStellarPriceInUsd() {
     return this.getPriceInUsd('stellar', coinGeckoSchemas['stellar']);
+  }
+
+  async getAvaxPriceInUsd() {
+    return this.getPriceInUsd('avalanche-2', coinGeckoSchemas['avalanche-2']);
   }
 }
