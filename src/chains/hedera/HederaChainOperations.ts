@@ -238,6 +238,6 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   getChainInfo(): ChainConfig {
-    throw new Error('Method not implemented.');
+    return this.chainConfig;
   }
 }
