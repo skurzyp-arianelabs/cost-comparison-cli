@@ -3,8 +3,8 @@ import { z } from 'zod';
 const coinGeckoSchemas = {
   'hedera-hashgraph': z.object({ 'hedera-hashgraph': z.object({ usd: z.number() }) }),
   'solana': z.object({ 'solana': z.object({ usd: z.number() }) }),
-  'optimism': z.object({
-    'optimism': z.object({ usd: z.number() }),
+  'ethereum': z.object({
+    'ethereum': z.object({ usd: z.number() }),
   }),
 };
 
@@ -33,7 +33,7 @@ export class CoinGeckoApiService {
     return this.getPriceInUsd('solana', coinGeckoSchemas['solana']);
   }
 
-  async getOpPriceInUsd() {
-    return this.getPriceInUsd('optimism', coinGeckoSchemas['optimism']);
+  async getEthPriceInUsd() {
+    return this.getPriceInUsd('ethereum', coinGeckoSchemas['ethereum']);
   }
 }

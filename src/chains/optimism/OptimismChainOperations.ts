@@ -11,15 +11,18 @@ import { BigNumber } from 'bignumber.js';
 import { CoinGeckoApiService } from '../../services/ApiService/CoinGeckoApiService';
 import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { EvmRpcOperations } from '../evm/EvmRpcOperations';
+import { formatUnits } from 'viem';
 
 export class OptimismChainOperations implements IChainOperations {
   private coinGeckoApiService: CoinGeckoApiService;
   private chainConfig: ChainConfig;
   private evmRpcOps: IEvmRpcOperations;
-  private opPriceBN: BigNumber | undefined;
+  private ethPriceBN: BigNumber | undefined;
 
   constructor(private configService: ConfigService) {
-    this.chainConfig = this.configService.getChainConfig(SupportedChain.OPTIMISM);
+    this.chainConfig = this.configService.getChainConfig(
+      SupportedChain.OPTIMISM
+    );
     const privateKey = this.configService.getWalletCredentials(
       this.chainConfig.type
     ).privateKey!;
@@ -29,35 +32,53 @@ export class OptimismChainOperations implements IChainOperations {
       this.chainConfig.rpcUrls.default.http[0]!,
       privateKey as `0x${string}`
     );
-    this.opPriceBN = undefined;
+    this.ethPriceBN = undefined;
   }
 
-  private async getOpUsdPrice(): Promise<BigNumber> {
-    if (this.opPriceBN) return this.opPriceBN;
+  private async getEthUsdPrice(): Promise<BigNumber> {
+    if (this.ethPriceBN) return this.ethPriceBN;
 
-    const opUSDPrice = (await this.coinGeckoApiService.getOpPriceInUsd())[
-      'optimism'
-      ].usd;
-    this.opPriceBN = new BigNumber(opUSDPrice);
-    return this.opPriceBN;
+    const ethUSDPrice = (await this.coinGeckoApiService.getEthPriceInUsd())[
+      'ethereum'
+    ].usd;
+    this.ethPriceBN = new BigNumber(ethUSDPrice);
+    return this.ethPriceBN;
   }
 
   async generateFullResult(
     partialResult: TransactionResult,
     operation: SupportedOperation
   ): Promise<FullTransactionResult> {
+    const ethPriceBN = await this.getEthUsdPrice();
 
-    const opPriceBN = await this.getOpUsdPrice();
+    const gasUsed = new BigNumber(partialResult.gasUsed ?? 0);
+    const gasPrice = new BigNumber(partialResult.gasPrice ?? 0);
+    const additionalCost = new BigNumber(partialResult.additionalCost ?? 0);
+    const feeL1 = new BigNumber(partialResult.feeL1 ?? 0);
 
-    const usdCost = BigNumber(partialResult.totalCost!)
-      .multipliedBy(opPriceBN)
-      .toString();
+    console.log('L2',gasUsed.multipliedBy(gasPrice).toString());
+    console.log('feeL1',feeL1.toString());
+
+    const totalCostWei = gasUsed
+      .multipliedBy(gasPrice)
+      .plus(feeL1)
+      .plus(additionalCost);
+
+    const totalCostEth = new BigNumber(
+      formatUnits(
+        BigInt(totalCostWei.toFixed(0)),
+        this.chainConfig.nativeCurrency.decimals
+      )
+    );
+
+    const usdCostBN = totalCostEth.multipliedBy(ethPriceBN);
 
     return {
       ...partialResult,
       chain: this.chainConfig.type,
       operation,
-      usdCost,
+      totalCost: totalCostEth.toString(),
+      usdCost: usdCostBN.multipliedBy(ethPriceBN).toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
   }

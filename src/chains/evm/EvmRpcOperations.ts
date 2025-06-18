@@ -3,11 +3,11 @@ import {
   createNonceManager,
   createPublicClient,
   createWalletClient,
-  formatUnits,
   getContract,
   http,
   parseUnits,
-  PublicClient, stringToHex,
+  PublicClient,
+  stringToHex,
   TransactionReceipt as ViemTransactionReceipt,
   WalletClient,
 } from 'viem';
@@ -17,7 +17,7 @@ import { AccountData, TransactionResult } from '../../types';
 import { jsonRpc } from 'viem/nonce';
 import erc20Compiled from '../../contracts/ERC-20.json';
 import erc721Compiled from '../../contracts/ERC-721.json';
-import { get900BytesMessage } from "../../utils/utils";
+import { get900BytesMessage } from '../../utils/utils';
 
 export class EvmRpcOperations implements IEvmRpcOperations {
   private viemWalletClient: WalletClient;
@@ -39,22 +39,27 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   private formatViemTransactionResult(
     txHash: string,
     receipt: ViemTransactionReceipt,
-    additionalCost: bigint = 0n,
+    additionalCost: bigint = 0n
   ): TransactionResult {
-    // multilayerFee handles different response for L2 chains like the Optimism
+    // gasPriceL1, gasUsedL1, l1Fee are returned for the L2 chains transactions like Optimism
     // @ts-ignore
-    const multilayerFee = receipt.l1Fee ? BigInt(receipt.l1Fee) : 0n;
+    const gasUsedL1 = receipt.l1GasUsed ? BigInt(receipt.l1GasUsed) : 0n;
+    // @ts-ignore
+    const gasPriceL1 = receipt.l1GasPrice ? BigInt(receipt.l1GasPrice) : 0n;
+    // @ts-ignore
+    const l1Fee = receipt.l1Fee ? BigInt(receipt.l1Fee) : 0n;
 
-    const totalCostWei = receipt.gasUsed * receipt.effectiveGasPrice + multilayerFee + additionalCost;
-    const totalCostEth = formatUnits(totalCostWei, 18);
     return {
       transactionHash: txHash,
-      gasUsedL1: receipt.gasUsed.toString(),
-      gasPriceL1: receipt.effectiveGasPrice.toString(),
-      totalCost: totalCostEth.toString(),
+      gasUsed: receipt.gasUsed.toString(),
+      gasPrice: receipt.effectiveGasPrice.toString(),
+      gasUsedL1: gasUsedL1.toString(),
+      gasPriceL1: gasPriceL1.toString(),
+      feeL1: l1Fee.toString(),
       timestamp: Date.now().toString(),
       status: receipt.status === 'success' ? 'success' : 'failed',
       blockNumber: receipt.blockNumber.toString(),
+      additionalCost: additionalCost.toString(),
     };
   }
 
@@ -165,7 +170,6 @@ export class EvmRpcOperations implements IEvmRpcOperations {
       erc721Compiled,
       [initialOwner]
     );
-
 
     return this.formatViemTransactionResult(deployHash, deployReceipt);
   }
@@ -307,7 +311,6 @@ export class EvmRpcOperations implements IEvmRpcOperations {
     }
   }
 
-
   /**
    * Key: hcs-message-submit
    * Sending a message is handled as attaching the text to transfer transaction memo
@@ -316,8 +319,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
    */
   async submitMessage(): Promise<TransactionResult> {
     // 0. Create an account that will receive the message
-    const recipient = (await this.createAccount())
-      .accountAddress;
+    const recipient = (await this.createAccount()).accountAddress;
     const memoText = get900BytesMessage();
 
     // 1. place the transaction with an attached message
@@ -335,10 +337,6 @@ export class EvmRpcOperations implements IEvmRpcOperations {
       });
 
     // the additional cost of transferred tokens must be taken into account
-    return this.formatViemTransactionResult(
-      transferHash,
-      transferReceipt,
-      1n
-    );
+    return this.formatViemTransactionResult(transferHash, transferReceipt, 1n);
   }
 }

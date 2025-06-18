@@ -14,6 +14,7 @@ import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { HederaNativeOperations } from './HederaNativeOperations';
 import { EvmRpcOperations } from '../evm/EvmRpcOperations';
 import { parseDerKeyToHex } from './hederaUtils';
+import { formatUnits } from "viem";
 
 export class HederaChainOperations implements IChainOperations {
   private coinGeckoApiService: CoinGeckoApiService;
@@ -49,13 +50,33 @@ export class HederaChainOperations implements IChainOperations {
   ): Promise<FullTransactionResult> {
     const hbarPriceBN = await this.getHbarUsdPrice();
 
+    let totalCostHbar: BigNumber;
+
+    if (partialResult.totalCost != null) {
+      // Already in HBAR, returned by Hashgraph SDK
+      totalCostHbar = new BigNumber(partialResult.totalCost);
+    } else {
+      const gasUsed = new BigNumber(partialResult.gasUsed ?? 0);
+      const gasPrice = new BigNumber(partialResult.gasPrice ?? 0);
+
+      const totalCostTinybar = gasUsed.multipliedBy(gasPrice);
+
+      totalCostHbar = new BigNumber(
+        formatUnits(
+          BigInt(totalCostTinybar.toFixed(0)),
+          this.chainConfig.nativeCurrency.decimals
+        )
+      );
+    }
+
+    const usdCostBN = totalCostHbar.multipliedBy(hbarPriceBN);
+
     return {
       ...partialResult,
       chain: this.chainConfig.type,
       operation,
-      usdCost: new BigNumber(partialResult.totalCost!)
-        .multipliedBy(hbarPriceBN)
-        .toString(),
+      totalCost: totalCostHbar.toString(),
+      usdCost: usdCostBN.toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
   }

@@ -61,7 +61,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
   ): Promise<TransactionResult> {
     return {
       transactionHash: txResponse.transactionId.toString(),
-      gasUsedL1:
+      gasUsed:
         txRecord.contractFunctionResult?.gasUsed.toString() ||
         txRecord.transactionFee.toString(),
       totalCost: txRecord.transactionFee.toBigNumber().toString(),
