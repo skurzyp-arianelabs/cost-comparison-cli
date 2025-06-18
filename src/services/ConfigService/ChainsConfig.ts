@@ -6,10 +6,32 @@ import {
   optimism,
   optimismSepolia,
 } from 'viem/chains';
-import { ExtendedChain, NetworkType, SupportedChain } from '../../types';
+import { ChainConfig, NetworkType, SupportedChain } from '../../types';
+import { Chain } from 'viem';
 
-const solanaDevnet: ExtendedChain = {
-  id: 10000, // internal chain id - Solana does not have it's unique EVM chain id as it is not EVM compatible
+export function mapViemChainToConfig(
+  chain: Chain,
+  type: SupportedChain,
+  network: NetworkType
+): ChainConfig {
+  return {
+    type,
+    network,
+    name: chain.name,
+    nativeCurrency: {
+      decimals: chain.nativeCurrency.decimals,
+      name: chain.nativeCurrency.name,
+      symbol: chain.nativeCurrency.symbol,
+    },
+    rpcUrls: {
+      default: {
+        http: chain.rpcUrls.default.http as string[],
+      },
+    },
+  };
+}
+
+const solanaDevnet: ChainConfig = {
   name: 'Solana Devnet',
   type: SupportedChain.SOLANA,
   network: NetworkType.TESTNET,
@@ -23,14 +45,9 @@ const solanaDevnet: ExtendedChain = {
       http: ['https://api.devnet.solana.com'],
     },
   },
-  blockExplorers: {
-    default: { name: 'Explorer', url: 'https://solscan.io' },
-  },
-  contracts: {},
 };
 
-const solanaMainnet: ExtendedChain = {
-  id: 10001, // internal ID
+const solanaMainnet: ChainConfig = {
   type: SupportedChain.SOLANA,
   network: NetworkType.MAINNET,
   name: 'Solana Mainnet',
@@ -44,14 +61,9 @@ const solanaMainnet: ExtendedChain = {
       http: ['https://api.mainnet-beta.solana.com'],
     },
   },
-  blockExplorers: {
-    default: { name: 'Explorer', url: 'https://solscan.io' },
-  },
-  contracts: {},
 };
 
-const rippleMainnet: ExtendedChain = {
-  id: 10002, // internal ID
+const rippleMainnet: ChainConfig = {
   type: SupportedChain.RIPPLE,
   network: NetworkType.MAINNET,
   name: 'Ripple Mainnet',
@@ -65,14 +77,9 @@ const rippleMainnet: ExtendedChain = {
       http: ['https://s1.ripple.com:51234'],
     },
   },
-  blockExplorers: {
-    default: { name: 'XRPScan', url: 'https://xrpscan.com' },
-  },
-  contracts: {},
 };
 
-const rippleTestnet: ExtendedChain = {
-  id: 10005, // internal ID
+const rippleTestnet: ChainConfig = {
   type: SupportedChain.RIPPLE,
   network: NetworkType.TESTNET,
   name: 'Ripple Testnet',
@@ -86,14 +93,9 @@ const rippleTestnet: ExtendedChain = {
       http: ['https://s.altnet.rippletest.net:51234'],
     },
   },
-  blockExplorers: {
-    default: { name: 'XRPScan Testnet', url: 'https://testnet.xrpscan.com' },
-  },
-  contracts: {},
 };
 
-const stellarMainnet: ExtendedChain = {
-  id: 10003, // internal ID
+const stellarMainnet: ChainConfig = {
   type: SupportedChain.STELLAR,
   network: NetworkType.MAINNET,
   name: 'Stellar Mainnet',
@@ -107,17 +109,9 @@ const stellarMainnet: ExtendedChain = {
       http: ['https://horizon.stellar.org'],
     },
   },
-  blockExplorers: {
-    default: {
-      name: 'StellarExpert',
-      url: 'https://stellar.expert/explorer/public',
-    },
-  },
-  contracts: {},
 };
 
-const stellarTestnet: ExtendedChain = {
-  id: 10004, // internal ID
+const stellarTestnet: ChainConfig = {
   type: SupportedChain.STELLAR,
   network: NetworkType.TESTNET,
   name: 'Stellar Testnet',
@@ -131,47 +125,36 @@ const stellarTestnet: ExtendedChain = {
       http: ['https://horizon-testnet.stellar.org'],
     },
   },
-  blockExplorers: {
-    default: {
-      name: 'StellarExpert Testnet',
-      url: 'https://stellar.expert/explorer/testnet',
-    },
-  },
-  contracts: {},
 };
 
-export const initSupportedChains = (): ExtendedChain[] => {
+export const initSupportedChains = (): ChainConfig[] => {
   return [
-    {
-      ...avalanche,
-      type: SupportedChain.AVALANCHE,
-      network: NetworkType.MAINNET,
-    },
-    {
-      ...avalancheFuji,
-      type: SupportedChain.AVALANCHE,
-      network: NetworkType.TESTNET,
-    },
-    {
-      ...hedera,
-      type: SupportedChain.HEDERA,
-      network: NetworkType.MAINNET,
-    },
-    {
-      ...hederaTestnet,
-      type: SupportedChain.HEDERA,
-      network: NetworkType.TESTNET,
-    },
-    {
-      ...optimism,
-      type: SupportedChain.OPTIMISM,
-      network: NetworkType.MAINNET,
-    },
-    {
-      ...optimismSepolia,
-      type: SupportedChain.OPTIMISM,
-      network: NetworkType.TESTNET,
-    },
+    mapViemChainToConfig(
+      avalanche,
+      SupportedChain.AVALANCHE,
+      NetworkType.MAINNET
+    ),
+    mapViemChainToConfig(
+      avalancheFuji,
+      SupportedChain.AVALANCHE,
+      NetworkType.TESTNET
+    ),
+    mapViemChainToConfig(hedera, SupportedChain.HEDERA, NetworkType.MAINNET),
+    mapViemChainToConfig(
+      hederaTestnet,
+      SupportedChain.HEDERA,
+      NetworkType.TESTNET
+    ),
+    mapViemChainToConfig(
+      optimism,
+      SupportedChain.OPTIMISM,
+      NetworkType.MAINNET
+    ),
+    mapViemChainToConfig(
+      optimismSepolia,
+      SupportedChain.OPTIMISM,
+      NetworkType.TESTNET
+    ),
     solanaDevnet,
     solanaMainnet,
     stellarTestnet,
