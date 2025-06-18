@@ -1,5 +1,5 @@
-import { CostComparisonTool } from './services/CostComparisonTool';
 import { cliConfig } from './utils/cli';
+import { CostComparisonTool } from './services/CostComparisonTool';
 
 async function main() {
   try {
@@ -7,10 +7,12 @@ async function main() {
     console.log(cliConfig);
 
     const tool = new CostComparisonTool();
-    const response = await tool.run(cliConfig.chains, cliConfig.operations);
-    console.log(response);
+    await tool.run(cliConfig.chains, cliConfig.operations);
   } catch (error) {
-    console.error('An error occurred while running the CostComparisonTool:', error);
+    console.error(
+      'An error occurred while running the CostComparisonTool:',
+      error
+    );
   }
 }
 

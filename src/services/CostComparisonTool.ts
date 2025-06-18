@@ -1,36 +1,43 @@
-import { ChainClientFactory } from '../chains/factories/ChainClientFactory';
 import { ConfigService } from './ConfigService/ConfigService';
-import { IChainClient } from '../chains/IChainClient';
+import { CsvService, CsvRow } from './CsvService';
 import {
   SupportedChain,
   SupportedOperation,
-  TransactionResult,
+  FullTransactionResult,
 } from '../types';
+import { ChainOperationsFactory } from '../chains/factories/OperationsFactory';
+import { IChainOperations } from '../chains/abstract/IChainOperations';
+import { ChainOperationsStrategy } from '../chains/ChainOperationsStrategy';
 
 export class CostComparisonTool {
   private configService: ConfigService;
-  private chainClientFactory: ChainClientFactory;
+  private chainOperationsFactory: ChainOperationsFactory;
+  private csvService: CsvService;
 
   constructor() {
     this.configService = new ConfigService();
-    this.chainClientFactory = new ChainClientFactory(this.configService);
+    this.chainOperationsFactory = new ChainOperationsFactory(
+      this.configService
+    );
+    this.csvService = new CsvService();
   }
 
   public async run(
     chains: SupportedChain[],
-    operations: SupportedOperation[]
+    selectedOperations: SupportedOperation[]
   ): Promise<void> {
-    // Create clients
-    const clients = chains.map((chainType) => ({
+    // Create chain operations
+    const chainOperationsList = chains.map((chainType) => ({
       chainId: chainType,
-      client: this.chainClientFactory.createClient(chainType),
+      chainOperations:
+        this.chainOperationsFactory.createChainOperations(chainType),
     }));
 
     console.log('Checking chain connectivity...');
     const healthChecks = await Promise.all(
-      clients.map(async ({ chainId, client }) => ({
+      chainOperationsList.map(async ({ chainId, chainOperations }) => ({
         chainId,
-        healthy: await client.isHealthy(),
+        healthy: await chainOperations.isHealthy(),
       }))
     );
 
@@ -41,7 +48,7 @@ export class CostComparisonTool {
       );
     }
 
-    const healthyClients = clients.filter(
+    const healthyClients = chainOperationsList.filter(
       ({ chainId }) =>
         healthChecks.find((hc) => hc.chainId === chainId)?.healthy
     );
@@ -51,31 +58,64 @@ export class CostComparisonTool {
     }
 
     console.log(
-      `🚀 Executing ${operations.length} operations across ${healthyClients.length} chains`
+      `🚀 Executing ${selectedOperations.length} operations across ${healthyClients.length} chains`
     );
 
-    //TODO: currently runs given operations only once for each given chain. Should support setting number of executions
-    const results = await this.executeConcurrentOperations(clients, operations);
+    const results = await this.executeSequentialOperations(
+      chainOperationsList,
+      selectedOperations
+    );
+
     console.log(JSON.stringify(results, null, 2));
+
+    const csvRows: CsvRow[] = results.map((result) => ({
+      chain: result.chain,
+      operation: result.operation,
+      usdCost: result.usdCost,
+      transactionHash: result.transactionHash,
+      nativeCurrencySymbol: result.nativeCurrencySymbol,
+      status: result.status,
+      timestamp: result.timestamp,
+    }));
+
+    this.csvService.saveCsv('results', csvRows);
   }
 
-  private async executeConcurrentOperations(
-    clients: Array<{
-      chainId: string;
-      client: IChainClient;
+  private async executeSequentialOperations(
+    chainOperationsList: Array<{
+      chainId: SupportedChain;
+      chainOperations: IChainOperations;
     }>,
-    operations: SupportedOperation[]
-  ): Promise<TransactionResult[]> {
-    const promises = clients.flatMap(({ client }) =>
-      operations.map((operation) => client.executeOperation(operation))
+    selectedOperations: SupportedOperation[]
+  ): Promise<FullTransactionResult[]> {
+    // One Promise per chain
+    const perChainPromises = chainOperationsList.map(
+      async ({ chainId, chainOperations }) => {
+        const chainResults: FullTransactionResult[] = [];
+
+        for (const selectedOperation of selectedOperations) {
+          try {
+            console.log(`Running ${selectedOperation} on ${chainId}`);
+            const result = await ChainOperationsStrategy.executeOperation(
+              selectedOperation,
+              chainOperations
+            );
+            chainResults.push(result);
+          } catch (error) {
+            console.error(
+              `Error executing ${selectedOperation} on ${chainId}:`,
+              error
+            );
+          }
+        }
+
+        return chainResults;
+      }
     );
 
-    const results = await Promise.allSettled(promises);
-    return results
-      .filter(
-        (result): result is PromiseFulfilledResult<TransactionResult> =>
-          result.status === 'fulfilled'
-      )
-      .map((result) => result.value);
+    // Run all chains in parallel, await results
+    const nestedResults = await Promise.all(perChainPromises);
+
+    return nestedResults.flat();
   }
 }
