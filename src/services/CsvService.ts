@@ -4,12 +4,13 @@ import path from 'path';
 export interface CsvRow {
   chain: string;
   operation: string;
-  usdCost: string | undefined;
+  usdCost?: string;
   gasUsed?: string;
   transactionHash?: string;
   nativeCurrencySymbol?: string;
   status?: string;
   timestamp?: string;
+  transactionLink?: string;
 }
 
 export class CsvService {
@@ -27,7 +28,23 @@ export class CsvService {
     }
   }
 
-  public saveCsv(filename: string, data: CsvRow[]): void {
+  private generateTimestampedFilename(baseName: string): string {
+    const now = new Date();
+
+    const usFormattedDate = new Intl.DateTimeFormat('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+    }).format(now);
+
+    const [month, day, year] = usFormattedDate.split('/');
+
+    const time = now.toTimeString().slice(0, 8).replace(/:/g, '-');
+
+    return `${baseName}_${month}-${day}-${year}_${time}.csv`;
+  }
+
+  public saveCsv(baseName: string, data: CsvRow[]): void {
     if (!data.length) return;
 
     const headers = Object.keys(data[0]!);
@@ -38,7 +55,9 @@ export class CsvService {
       ),
     ].join('\n');
 
+    const filename = this.generateTimestampedFilename(baseName);
     const fullPath = path.join(this.outputDir, filename);
+
     fs.writeFileSync(fullPath, csvContent, 'utf8');
     console.log(`✅ CSV saved to: ${fullPath}`);
   }

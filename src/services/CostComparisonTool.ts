@@ -72,15 +72,13 @@ export class CostComparisonTool {
       chain: result.chain,
       operation: result.operation,
       usdCost: result.usdCost,
-      // todo: make sure how to properly build gasUsed here
-      gasUsed: result.gasUsedL1 ?? result.gasUsedL2,
       transactionHash: result.transactionHash,
       nativeCurrencySymbol: result.nativeCurrencySymbol,
       status: result.status,
       timestamp: result.timestamp,
     }));
 
-    this.csvService.saveCsv('results.csv', csvRows);
+    this.csvService.saveCsv('results', csvRows);
   }
 
   private async executeSequentialOperations(
