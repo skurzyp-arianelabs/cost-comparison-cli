@@ -5,6 +5,7 @@ import { IChainOperations } from '../abstract/IChainOperations';
 import { AvalancheChainOperations } from '../avalanche/AvalancheChainOperations';
 import { SolanaChainOperations } from '../solana/SolanaChainOperations';
 import { OptimismChainOperations } from '../optimism/OptimismChainOperations';
+import { StellarChainOperations } from '../stellar/StellarChainOperations';
 
 export class ChainOperationsFactory {
   private configService: ConfigService;
@@ -28,6 +29,8 @@ export class ChainOperationsFactory {
         return new AvalancheChainOperations(this.configService);
       case SupportedChain.SOLANA:
         return new SolanaChainOperations(this.configService);
+      case SupportedChain.STELLAR:
+        return new StellarChainOperations(this.configService);
       default:
         throw new Error(
           `No client implementation for chain type: ${config.name}`

@@ -1,6 +1,6 @@
 import { TransactionResult } from '../../types';
 
-export interface ISolanaNativeOperations {
+export interface IStellarNativeOperations {
   // Native Fungible Token Operations
   createNativeFT(): Promise<TransactionResult>;
 

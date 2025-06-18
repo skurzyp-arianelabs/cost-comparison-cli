@@ -17,6 +17,7 @@ export class AvalancheChainOperations implements IChainOperations {
   private coinGeckoApiService: CoinGeckoApiService;
   private chainConfig: ChainConfig;
   private evmRpcOps: IEvmRpcOperations;
+  private avaxPriceInUsd: BigNumber | undefined;
 
   constructor(private configService: ConfigService) {
     this.chainConfig = this.configService.getChainConfig(
@@ -34,10 +35,13 @@ export class AvalancheChainOperations implements IChainOperations {
   }
 
   private async getAvaxUsdPrice(): Promise<BigNumber> {
+    if (this.avaxPriceInUsd) return this.avaxPriceInUsd;
+
     const avaxUSDPrice = (await this.coinGeckoApiService.getAvaxPriceInUsd())[
       'avalanche-2'
     ].usd;
-    return new BigNumber(avaxUSDPrice);
+    this.avaxPriceInUsd = new BigNumber(avaxUSDPrice);
+    return this.avaxPriceInUsd;
   }
 
   async generateFullResult(
