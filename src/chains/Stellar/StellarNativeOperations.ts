@@ -124,7 +124,9 @@ export class StellarNativeOperations implements IStellarNativeOperations {
         fee /
         10 ** this.chainConfig.nativeCurrency.decimals
       ).toString(),
-      timestamp: txDetails.created_at,
+      timestamp: Math.floor(
+        new Date(txDetails.created_at).getTime() / 1000
+      ).toString(),
       status: 'success',
     };
   }
