@@ -93,7 +93,7 @@ export enum SupportedOperation {
 export enum NetworkType {
   TESTNET = 'testnet',
   MAINNET = 'mainnet',
-  PREVIEWNET = 'previewnet'
+  PREVIEWNET = 'previewnet',
 }
 
 export type AccountData = {

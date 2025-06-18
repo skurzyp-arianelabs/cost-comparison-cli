@@ -6,6 +6,7 @@ const coinGeckoSchemas = {
   'ethereum': z.object({
     'ethereum': z.object({ usd: z.number() }),
   }),
+  'avalanche-2': z.object({ 'avalanche-2': z.object({ usd: z.number() }) }),
 };
 
 export class CoinGeckoApiService {
@@ -26,7 +27,10 @@ export class CoinGeckoApiService {
   }
 
   async getHbarPriceInUsd() {
-    return this.getPriceInUsd('hedera-hashgraph', coinGeckoSchemas['hedera-hashgraph']);
+    return this.getPriceInUsd(
+      'hedera-hashgraph',
+      coinGeckoSchemas['hedera-hashgraph']
+    );
   }
 
   async getSolPriceInUsd() {
@@ -35,5 +39,9 @@ export class CoinGeckoApiService {
 
   async getEthPriceInUsd() {
     return this.getPriceInUsd('ethereum', coinGeckoSchemas['ethereum']);
+  }
+
+  async getAvaxPriceInUsd() {
+    return this.getPriceInUsd('avalanche-2', coinGeckoSchemas['avalanche-2']);
   }
 }
