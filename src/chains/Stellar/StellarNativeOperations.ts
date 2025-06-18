@@ -1,40 +1,54 @@
 import {
   Asset,
   BASE_FEE,
+  Horizon,
+  Keypair,
+  Memo,
+  Networks,
   Operation,
   TransactionBuilder,
-  Keypair,
-  Horizon,
-  Memo,
 } from 'stellar-sdk';
-import BigNumber from 'bignumber.js';
-import { AbstractChainClient } from '../abstract/AbstractChainClient';
 import { ConfigService } from '../../services/ConfigService/ConfigService';
 import {
-  ExtendedChain,
+  AccountData,
+  ChainConfig,
   SupportedChain,
-  SupportedOperation,
   TransactionResult,
+  WalletCredentials,
 } from '../../types';
-import { StellarWalletService } from '../../services/WalletServices/StellarWalletService';
-import { calculateUsdCost } from '../../utils/calculateUsdCost';
-import { MEMO_TEXT_28_BYTES } from '../../utils/constants';
+import { IStellarNativeOperations } from './IStellarNativeOperations';
 import { STELLAR_TX_TIMEOUT_SECONDS } from './constants';
+import { MEMO_TEXT_28_BYTES } from '../../utils/constants';
 
-export class StellarChainClient extends AbstractChainClient {
-  private stellarPriceUSD!: BigNumber;
+function getStellarNetworkPassphrase(network: string): string {
+  return network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
+}
+
+export class StellarNativeOperations implements IStellarNativeOperations {
+  private configService: ConfigService;
+  private chainConfig: ChainConfig;
+  private readonly server: Horizon.Server;
+  private readonly issuerKeypair: Keypair;
+  private readonly networkPassphrase: string;
   private distributorCreationLock: Promise<void> = Promise.resolve();
+  private accountCreationPromise: Promise<void> = Promise.resolve();
 
-  constructor(chainConfig: ExtendedChain, configService: ConfigService) {
-    const walletService = new StellarWalletService(configService);
+  constructor(configService: ConfigService) {
+    this.configService = configService;
+    this.chainConfig = configService.getChainConfig(SupportedChain.STELLAR);
+    this.server = new Horizon.Server(this.chainConfig.rpcUrls.default.http[0]!);
+    const credentials: WalletCredentials =
+      this.configService.getWalletCredentials(SupportedChain.STELLAR);
+    this.issuerKeypair = Keypair.fromSecret(credentials.privateKey!);
 
-    super(chainConfig, configService, walletService);
+    this.networkPassphrase = getStellarNetworkPassphrase(
+      this.chainConfig.network
+    );
   }
 
   async isHealthy(): Promise<boolean> {
     try {
-      const server = (this.walletService as StellarWalletService).getClient();
-      const feeStats = await server.feeStats();
+      const feeStats = await this.server.feeStats();
 
       return typeof feeStats?.last_ledger_base_fee !== 'undefined';
     } catch (error) {
@@ -43,36 +57,88 @@ export class StellarChainClient extends AbstractChainClient {
     }
   }
 
-  private async fetchStellarPrice(): Promise<void> {
-    if (!this.stellarPriceUSD) {
-      const price = await this.coinGeckoApiService.getStellarPriceInUsd();
-      this.stellarPriceUSD = new BigNumber(price.stellar.usd);
+  // Ensures that only one createAccount operation runs at a time & prevents race conditions when issuerAccount is being reused in parallel.
+  private async withAccountCreationMutex<T>(fn: () => Promise<T>): Promise<T> {
+    let resolveCurrent!: () => void;
+
+    const previous = this.accountCreationPromise;
+
+    this.accountCreationPromise = new Promise((resolve) => {
+      resolveCurrent = resolve;
+    });
+
+    await previous;
+
+    try {
+      return await fn();
+    } finally {
+      resolveCurrent();
     }
   }
 
-  private async getFeeAndUsdCost(
-    fee: number
-  ): Promise<{ fee: number; usdCost: string }> {
-    await this.fetchStellarPrice();
-    const usdCost = calculateUsdCost(
-      fee,
-      this.stellarPriceUSD!,
-      this.chainConfig.nativeCurrency.decimals
-    );
-    return { fee, usdCost };
+  public async createAccount(): Promise<AccountData> {
+    return this.withAccountCreationMutex(async () => {
+      const newKeypair = Keypair.random();
+      const issuerAccount = await this.server.loadAccount(
+        this.issuerKeypair.publicKey()
+      );
+
+      const tx = new TransactionBuilder(issuerAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: this.networkPassphrase,
+      })
+        .addOperation(
+          Operation.createAccount({
+            destination: newKeypair.publicKey(),
+            startingBalance: '3.0000000',
+          })
+        )
+        .setTimeout(STELLAR_TX_TIMEOUT_SECONDS)
+        .build();
+
+      tx.sign(this.issuerKeypair);
+      await this.server.submitTransaction(tx);
+
+      return {
+        accountAddress: newKeypair.publicKey(),
+        privateKey: newKeypair.secret(),
+        publicKey: newKeypair.publicKey(),
+      };
+    });
+  }
+
+  // Helper method to format the transaction results
+  private async formatTransactionResult(
+    response: Horizon.HorizonApi.SubmitTransactionResponse
+  ): Promise<TransactionResult> {
+    const txDetails = await this.server
+      .transactions()
+      .transaction(response.hash as string)
+      .call();
+
+    const fee = parseInt(txDetails.fee_charged as string);
+
+    return {
+      transactionHash: txDetails.hash,
+      totalCost: (
+        fee /
+        10 ** this.chainConfig.nativeCurrency.decimals
+      ).toString(),
+      timestamp: txDetails.created_at,
+      status: 'success',
+    };
   }
 
   private async prepareStellarAssetContext(assetCode: string) {
-    const walletService = this.walletService as StellarWalletService;
-    const issuerKeypair = walletService.getIssuerKeypair();
-    const networkPassphrase = walletService.getNetworkPassphrase();
-    const server = walletService.getClient();
+    const server = this.server;
+    const issuerKeypair = this.issuerKeypair;
+    const networkPassphrase = this.networkPassphrase;
 
     await this.distributorCreationLock;
     let release: () => void;
     this.distributorCreationLock = new Promise<void>((res) => (release = res));
 
-    const distributorAccount = await walletService.createAccount();
+    const distributorAccount = await this.createAccount();
 
     release!();
     const asset = new Asset(assetCode, issuerKeypair.publicKey());
@@ -82,7 +148,6 @@ export class StellarChainClient extends AbstractChainClient {
     );
 
     return {
-      walletService,
       issuerKeypair,
       networkPassphrase,
       server,
@@ -134,28 +199,7 @@ export class StellarChainClient extends AbstractChainClient {
       networkPassphrase
     );
 
-    const txDetails = await server
-      .transactions()
-      .transaction(trustResponse.hash as string)
-      .call();
-
-    const feeCreateToken = parseInt(txDetails.fee_charged as string);
-    const { fee, usdCost } = await this.getFeeAndUsdCost(feeCreateToken);
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.CREATE_NATIVE_FT,
-      transactionHash: txDetails.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(trustResponse);
   }
 
   async associateNativeFT(): Promise<TransactionResult> {
@@ -167,7 +211,7 @@ export class StellarChainClient extends AbstractChainClient {
       distributorAccountLoaded,
     } = await this.prepareStellarAssetContext('TOKENTRUST');
 
-    const { trustTransaction, trustResponse } = await this.submitChangeTrustTx(
+    const { trustResponse } = await this.submitChangeTrustTx(
       server,
       distributorAccount,
       distributorAccountLoaded,
@@ -175,24 +219,7 @@ export class StellarChainClient extends AbstractChainClient {
       networkPassphrase
     );
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(
-      Number(trustTransaction.fee)
-    );
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.ASSOCIATE_NATIVE_FT,
-      transactionHash: trustResponse.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(trustResponse);
   }
 
   async mintNativeFT(): Promise<TransactionResult> {
@@ -235,22 +262,7 @@ export class StellarChainClient extends AbstractChainClient {
     paymentTx.sign(issuerKeypair);
     const txResult = await server.submitTransaction(paymentTx);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(Number(paymentTx.fee));
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.MINT_NATIVE_FT,
-      transactionHash: txResult.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(txResult);
   }
 
   async transferNativeFT(): Promise<TransactionResult> {
@@ -292,22 +304,7 @@ export class StellarChainClient extends AbstractChainClient {
     paymentTx.sign(issuerKeypair);
     const txResult = await server.submitTransaction(paymentTx);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(Number(paymentTx.fee));
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.TRANSFER_NATIVE_FT,
-      transactionHash: txResult.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(txResult);
   }
 
   async createNativeNFT(): Promise<TransactionResult> {
@@ -329,27 +326,7 @@ export class StellarChainClient extends AbstractChainClient {
       networkPassphrase
     );
 
-    const txDetails = await server
-      .transactions()
-      .transaction(trustResponse.hash as string)
-      .call();
-    const fee = parseInt(txDetails.fee_charged as string);
-    const { usdCost } = await this.getFeeAndUsdCost(fee);
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.CREATE_NATIVE_NFT,
-      transactionHash: txDetails.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(trustResponse);
   }
 
   async associateNativeNFT(): Promise<TransactionResult> {
@@ -363,7 +340,7 @@ export class StellarChainClient extends AbstractChainClient {
       distributorAccountLoaded,
     } = await this.prepareStellarAssetContext(nftCode);
 
-    const { trustTransaction, trustResponse } = await this.submitChangeTrustTx(
+    const { trustResponse } = await this.submitChangeTrustTx(
       server,
       distributorAccount,
       distributorAccountLoaded,
@@ -371,24 +348,7 @@ export class StellarChainClient extends AbstractChainClient {
       networkPassphrase
     );
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(
-      Number(trustTransaction.fee)
-    );
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.ASSOCIATE_NATIVE_NFT,
-      transactionHash: trustResponse.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(trustResponse);
   }
 
   async mintNativeNFT(): Promise<TransactionResult> {
@@ -433,22 +393,7 @@ export class StellarChainClient extends AbstractChainClient {
     mintTx.sign(issuerKeypair);
     const mintResult = await server.submitTransaction(mintTx);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(Number(mintTx.fee));
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.MINT_NATIVE_NFT,
-      transactionHash: mintResult.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(mintResult);
   }
 
   async transferNativeNFT(): Promise<TransactionResult> {
@@ -492,25 +437,10 @@ export class StellarChainClient extends AbstractChainClient {
     mintTx.sign(issuerKeypair);
     const mintResult = await server.submitTransaction(mintTx);
 
-    const { fee, usdCost } = await this.getFeeAndUsdCost(Number(mintTx.fee));
-
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.TRANSFER_NATIVE_NFT,
-      transactionHash: mintResult.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(mintResult);
   }
 
-  public async hcsSubmitMessage(): Promise<TransactionResult> {
+  public async submitMemoMessage(): Promise<TransactionResult> {
     const {
       issuerKeypair,
       networkPassphrase,
@@ -537,23 +467,7 @@ export class StellarChainClient extends AbstractChainClient {
     memoTransaction.sign(Keypair.fromSecret(distributorAccount.privateKey));
 
     const txResponse = await server.submitTransaction(memoTransaction);
-    const { fee, usdCost } = await this.getFeeAndUsdCost(
-      Number(memoTransaction.fee)
-    );
 
-    return {
-      chain: SupportedChain.STELLAR,
-      operation: SupportedOperation.HCS_MESSAGE_SUBMIT,
-      transactionHash: txResponse.hash,
-      gasUsed: fee.toString(),
-      totalCost: (
-        fee /
-        10 ** this.chainConfig.nativeCurrency.decimals
-      ).toString(),
-      usdCost,
-      nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
-      timestamp: new Date().toISOString(),
-      status: 'success',
-    };
+    return this.formatTransactionResult(txResponse);
   }
 }
