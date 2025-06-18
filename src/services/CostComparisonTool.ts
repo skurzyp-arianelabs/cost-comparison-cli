@@ -1,4 +1,5 @@
 import { ConfigService } from './ConfigService/ConfigService';
+import { CsvService, CsvRow } from './CsvService';
 import {
   SupportedChain,
   SupportedOperation,
@@ -11,12 +12,14 @@ import { ChainOperationsStrategy } from '../chains/ChainOperationsStrategy';
 export class CostComparisonTool {
   private configService: ConfigService;
   private chainOperationsFactory: ChainOperationsFactory;
+  private csvService: CsvService;
 
   constructor() {
     this.configService = new ConfigService();
     this.chainOperationsFactory = new ChainOperationsFactory(
       this.configService
     );
+    this.csvService = new CsvService();
   }
 
   public async run(
@@ -64,7 +67,18 @@ export class CostComparisonTool {
     );
 
     console.log(JSON.stringify(results, null, 2));
-    return;
+
+    const csvRows: CsvRow[] = results.map((result) => ({
+      chain: result.chain,
+      operation: result.operation,
+      usdCost: result.usdCost,
+      transactionHash: result.transactionHash,
+      nativeCurrencySymbol: result.nativeCurrencySymbol,
+      status: result.status,
+      timestamp: result.timestamp,
+    }));
+
+    this.csvService.saveCsv('results', csvRows);
   }
 
   private async executeSequentialOperations(
@@ -75,29 +89,33 @@ export class CostComparisonTool {
     selectedOperations: SupportedOperation[]
   ): Promise<FullTransactionResult[]> {
     // One Promise per chain
-    const perChainPromises = chainOperationsList.map(async ({ chainId, chainOperations }) => {
-      const chainResults: FullTransactionResult[] = [];
+    const perChainPromises = chainOperationsList.map(
+      async ({ chainId, chainOperations }) => {
+        const chainResults: FullTransactionResult[] = [];
 
-      for (const selectedOperation of selectedOperations) {
-        try {
-          console.log(`Running ${selectedOperation} on ${chainId}`);
-          const result = await ChainOperationsStrategy.executeOperation(
-            selectedOperation,
-            chainOperations
-          );
-          chainResults.push(result);
-        } catch (error) {
-          console.error(`Error executing ${selectedOperation} on ${chainId}:`, error);
+        for (const selectedOperation of selectedOperations) {
+          try {
+            console.log(`Running ${selectedOperation} on ${chainId}`);
+            const result = await ChainOperationsStrategy.executeOperation(
+              selectedOperation,
+              chainOperations
+            );
+            chainResults.push(result);
+          } catch (error) {
+            console.error(
+              `Error executing ${selectedOperation} on ${chainId}:`,
+              error
+            );
+          }
         }
-      }
 
-      return chainResults;
-    });
+        return chainResults;
+      }
+    );
 
     // Run all chains in parallel, await results
     const nestedResults = await Promise.all(perChainPromises);
 
     return nestedResults.flat();
   }
-
 }
