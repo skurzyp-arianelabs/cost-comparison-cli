@@ -1,5 +1,5 @@
 import {
-  ExtendedChain,
+  ChainConfig,
   NetworkType,
   SupportedChain,
   WalletCredentials,
@@ -11,7 +11,7 @@ dotenv.config();
 
 export class ConfigService {
   private config: Map<string, any> = new Map();
-  private chainsConfigs: ExtendedChain[];
+  private chainsConfigs: ChainConfig[];
   private networkType: NetworkType | undefined;
 
   constructor() {
@@ -19,7 +19,7 @@ export class ConfigService {
     this.chainsConfigs = initSupportedChains();
   }
 
-  public getChainConfig(chainType: SupportedChain): ExtendedChain {
+  public getChainConfig(chainType: SupportedChain): ChainConfig {
     return this.chainsConfigs.find(
       (c) => c.type === chainType && c.network === this.networkType
     )!;
