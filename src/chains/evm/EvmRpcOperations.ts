@@ -7,7 +7,7 @@ import {
   getContract,
   http,
   parseUnits,
-  PublicClient,
+  PublicClient, stringToHex,
   TransactionReceipt as ViemTransactionReceipt,
   WalletClient,
 } from 'viem';
@@ -17,6 +17,7 @@ import { AccountData, TransactionResult } from '../../types';
 import { jsonRpc } from 'viem/nonce';
 import erc20Compiled from '../../contracts/ERC-20.json';
 import erc721Compiled from '../../contracts/ERC-721.json';
+import { get900BytesMessage } from "../../utils/utils";
 
 export class EvmRpcOperations implements IEvmRpcOperations {
   private viemWalletClient: WalletClient;
@@ -37,10 +38,15 @@ export class EvmRpcOperations implements IEvmRpcOperations {
 
   private formatViemTransactionResult(
     txHash: string,
-    receipt: ViemTransactionReceipt
+    receipt: ViemTransactionReceipt,
+    additionalCost: bigint = 0n,
   ): TransactionResult {
-    const totalCostWei = receipt.gasUsed * receipt.effectiveGasPrice;
-    const totalCostEth = formatUnits(BigInt(totalCostWei), 18);
+    // multilayerFee handles different response for L2 chains like the Optimism
+    // @ts-ignore
+    const multilayerFee = receipt.l1Fee ? BigInt(receipt.l1Fee) : 0n;
+
+    const totalCostWei = receipt.gasUsed * receipt.effectiveGasPrice + multilayerFee + additionalCost;
+    const totalCostEth = formatUnits(totalCostWei, 18);
     return {
       transactionHash: txHash,
       gasUsedL1: receipt.gasUsed.toString(),
@@ -299,5 +305,40 @@ export class EvmRpcOperations implements IEvmRpcOperations {
     } catch (error) {
       return Promise.resolve(false);
     }
+  }
+
+
+  /**
+   * Key: hcs-message-submit
+   * Sending a message is handled as attaching the text to transfer transaction memo
+   * 0. Create an account that will receive transaction
+   * 1. Send transaction with an attached message
+   */
+  async submitMessage(): Promise<TransactionResult> {
+    // 0. Create an account that will receive the message
+    const recipient = (await this.createAccount())
+      .accountAddress;
+    const memoText = get900BytesMessage();
+
+    // 1. place the transaction with an attached message
+    const transferHash = await this.viemWalletClient.sendTransaction({
+      account: this.viemWalletClient.account!,
+      to: recipient as `0x${string}`,
+      value: 1n,
+      data: stringToHex(memoText),
+      chain: this.viemWalletClient.chain,
+    });
+
+    const transferReceipt =
+      await this.viemPublicClient.waitForTransactionReceipt({
+        hash: transferHash,
+      });
+
+    // the additional cost of transferred tokens must be taken into account
+    return this.formatViemTransactionResult(
+      transferHash,
+      transferReceipt,
+      1n
+    );
   }
 }
