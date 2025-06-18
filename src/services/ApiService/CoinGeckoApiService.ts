@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 const coinGeckoSchemas = {
-  'hedera-hashgraph': z.object({
-    'hedera-hashgraph': z.object({ usd: z.number() }),
+  'hedera-hashgraph': z.object({ 'hedera-hashgraph': z.object({ usd: z.number() }) }),
+  'ethereum': z.object({
+    'ethereum': z.object({ usd: z.number() }),
   }),
-  solana: z.object({ solana: z.object({ usd: z.number() }) }),
-  stellar: z.object({ stellar: z.object({ usd: z.number() }) }),
+  'solana': z.object({ solana: z.object({ usd: z.number() }) }),
+  'stellar': z.object({ stellar: z.object({ usd: z.number() }) }),
   'avalanche-2': z.object({ 'avalanche-2': z.object({ usd: z.number() }) }),
 };
 
@@ -39,6 +40,10 @@ export class CoinGeckoApiService {
 
   async getStellarPriceInUsd() {
     return this.getPriceInUsd('stellar', coinGeckoSchemas['stellar']);
+  }
+
+  async getEthPriceInUsd() {
+    return this.getPriceInUsd('ethereum', coinGeckoSchemas['ethereum']);
   }
 
   async getAvaxPriceInUsd() {

@@ -9,15 +9,17 @@ export interface FullTransactionResult extends TransactionResult {
 
 export interface TransactionResult {
   transactionHash?: string;
+  gasUsed?: string | undefined;
+  gasPrice?: string | undefined;
   gasUsedL1?: string | undefined;
   gasPriceL1?: string | undefined;
-  gasUsedL2?: string | undefined;
-  gasPriceL2?: string | undefined;
+  feeL1?: string | undefined;
   totalCost?: string | undefined;
   status: 'success' | 'failed';
   timestamp: string;
   error?: string | undefined;
   blockNumber?: string;
+  additionalCost?: string;
 }
 
 export enum SupportedChain {
