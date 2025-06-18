@@ -45,8 +45,8 @@ export class RippleNativeOperations implements IRippleNativeOperations {
         await this.rippleClient.submitAndWait(paymentTx, {
           wallet: this.rippleWallet
         });
-
         await this.rippleClient.disconnect();
+        this.walletsInitialized = true;
     }
 
 

@@ -1,10 +1,9 @@
 import { ConfigService } from "../../services/ConfigService/ConfigService";
-import { ChainConfig, FullTransactionResult, RippleWalletCredentials, SupportedChain, SupportedOperation, WalletCredentials } from "../../types";
+import { ChainConfig, FullTransactionResult, SupportedChain, SupportedOperation } from "../../types";
 import { IChainOperations } from "../abstract/IChainOperations";
-import { AccountSetAsfFlags, Client, SubmittableTransaction, TxResponse, Wallet } from "xrpl";
+import { Client, SubmittableTransaction, TxResponse } from "xrpl";
 import { RippleNativeOperations } from "./RippleNativeOperations";
 import { CoinGeckoApiService } from "../../services/ApiService/CoinGeckoApiService";
-import { number } from "zod";
 
 export class RippleChainOperations implements IChainOperations {
   private readonly rippleNativeOperations: RippleNativeOperations;
@@ -83,7 +82,7 @@ export class RippleChainOperations implements IChainOperations {
   }
 
   async createNativeFT(): Promise<FullTransactionResult> {
-    return this.getErrorResponse("N/A", SupportedOperation.CREATE_NATIVE_FT);
+    return this.getNotApplicableResponse(SupportedOperation.CREATE_NATIVE_FT);
 
   }
 
