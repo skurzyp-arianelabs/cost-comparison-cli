@@ -1,0 +1,1 @@
+export const STELLAR_TX_TIMEOUT_SECONDS = 30;
