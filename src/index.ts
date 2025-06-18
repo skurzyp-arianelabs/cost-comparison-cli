@@ -7,8 +7,7 @@ async function main() {
     console.log(cliConfig);
 
     const tool = new CostComparisonTool();
-    const response = await tool.run(cliConfig.chains, cliConfig.operations);
-    console.log(response);
+    await tool.run(cliConfig.chains, cliConfig.operations);
   } catch (error) {
     console.error(
       'An error occurred while running the CostComparisonTool:',
