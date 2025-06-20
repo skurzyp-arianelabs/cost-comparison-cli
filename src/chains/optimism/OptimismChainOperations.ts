@@ -76,7 +76,7 @@ export class OptimismChainOperations implements IChainOperations {
       chain: this.chainConfig.type,
       operation,
       totalCost: totalCostEth.toString(),
-      usdCost: usdCostBN.multipliedBy(ethPriceBN).toString(),
+      usdCost: usdCostBN.toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
   }
