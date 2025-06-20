@@ -22,7 +22,7 @@ export class StellarChainOperations implements IChainOperations {
     this.chainConfig = this.configService.getChainConfig(
       SupportedChain.STELLAR
     );
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(this.configService);
     this.nativeSdkOps = new StellarNativeOperations(configService);
     this.stellarPriceInUsd = undefined;
   }
@@ -30,9 +30,8 @@ export class StellarChainOperations implements IChainOperations {
   private async getStellarUsdPrice(): Promise<BigNumber> {
     if (this.stellarPriceInUsd) return this.stellarPriceInUsd;
 
-    const stellarUSDPrice = (
-      await this.coinGeckoApiService.getStellarPriceInUsd()
-    )['stellar'].usd;
+    const stellarUSDPrice =
+      await this.coinGeckoApiService.getStellarPriceInUsd();
     this.stellarPriceInUsd = new BigNumber(stellarUSDPrice);
     return this.stellarPriceInUsd;
   }
@@ -167,11 +166,11 @@ export class StellarChainOperations implements IChainOperations {
     );
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.submitMemoMessage();
+  async submitMessage(): Promise<FullTransactionResult> {
+    const result = await this.nativeSdkOps.submitMessage();
     return await this.generateFullResult(
       result,
-      SupportedOperation.HCS_MESSAGE_SUBMIT
+      SupportedOperation.SUBMIT_MESSAGE
     );
   }
 
@@ -180,7 +179,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.createNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC20_HARDHAT
+      SupportedOperation.CREATE_ERC20_JSON_RPC
     );
   }
 
@@ -188,7 +187,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.mintNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC20_HARDHAT
+      SupportedOperation.MINT_ERC20_JSON_RPC
     );
   }
 
@@ -196,7 +195,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.transferNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC20_HARDHAT
+      SupportedOperation.TRANSFER_ERC20_JSON_RPC
     );
   }
 
@@ -204,7 +203,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.createNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC721_HARDHAT
+      SupportedOperation.CREATE_ERC721_JSON_RPC
     );
   }
 
@@ -212,7 +211,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.mintNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC721_HARDHAT
+      SupportedOperation.MINT_ERC721_JSON_RPC
     );
   }
 
@@ -220,7 +219,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.transferNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC721_HARDHAT
+      SupportedOperation.TRANSFER_ERC721_JSON_RPC
     );
   }
 

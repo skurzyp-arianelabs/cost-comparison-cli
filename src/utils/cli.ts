@@ -1,6 +1,6 @@
 import minimist from 'minimist';
 import { z } from 'zod';
-import { SupportedChain, SupportedOperation } from '../types';
+import { NetworkType, SupportedChain, SupportedOperation } from '../types';
 
 const rawArgs = minimist(process.argv.slice(2));
 
@@ -8,7 +8,7 @@ const supportedChains = Object.values(SupportedChain);
 const supportedOperations = Object.values(SupportedOperation);
 
 const cliSchema = z.object({
-  network: z.enum(['testnet', 'mainnet']).default('testnet'),
+  network: z.nativeEnum(NetworkType).default(NetworkType.TESTNET),
 
   chains: z
     .string()

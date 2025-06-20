@@ -19,8 +19,8 @@ export interface ISolanaNativeOperations {
 
   transferNativeNFT(): Promise<TransactionResult>;
 
-  // Memo submit operation
-  submitMemoMessage(): Promise<TransactionResult>;
+  // Message/Memo Operation
+  submitMessage(): Promise<TransactionResult>;
 
   // Utility
   isHealthy(): Promise<boolean>;

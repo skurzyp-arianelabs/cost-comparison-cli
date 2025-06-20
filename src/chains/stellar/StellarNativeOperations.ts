@@ -12,6 +12,7 @@ import { ConfigService } from '../../services/ConfigService/ConfigService';
 import {
   AccountData,
   ChainConfig,
+  NetworkType,
   SupportedChain,
   TransactionResult,
   WalletCredentials,
@@ -27,6 +28,7 @@ function getStellarNetworkPassphrase(network: string): string {
 export class StellarNativeOperations implements IStellarNativeOperations {
   private configService: ConfigService;
   private chainConfig: ChainConfig;
+  private networkType: NetworkType;
   private readonly server: Horizon.Server;
   private readonly issuerKeypair: Keypair;
   private readonly networkPassphrase: string;
@@ -36,14 +38,13 @@ export class StellarNativeOperations implements IStellarNativeOperations {
   constructor(configService: ConfigService) {
     this.configService = configService;
     this.chainConfig = configService.getChainConfig(SupportedChain.STELLAR);
+    this.networkType = configService.getNetworkType();
     this.server = new Horizon.Server(this.chainConfig.rpcUrls.default.http[0]!);
     const credentials: WalletCredentials =
       this.configService.getWalletCredentials(SupportedChain.STELLAR);
     this.issuerKeypair = Keypair.fromSecret(credentials.privateKey!);
 
-    this.networkPassphrase = getStellarNetworkPassphrase(
-      this.chainConfig.network
-    );
+    this.networkPassphrase = getStellarNetworkPassphrase(this.networkType);
   }
 
   async isHealthy(): Promise<boolean> {
@@ -442,7 +443,7 @@ export class StellarNativeOperations implements IStellarNativeOperations {
     return this.formatTransactionResult(mintResult);
   }
 
-  public async submitMemoMessage(): Promise<TransactionResult> {
+  public async submitMessage(): Promise<TransactionResult> {
     const {
       issuerKeypair,
       networkPassphrase,

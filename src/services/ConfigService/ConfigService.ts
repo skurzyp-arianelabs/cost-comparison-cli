@@ -1,6 +1,7 @@
 import {
   ChainConfig,
   NetworkType,
+  RippleWalletCredentials,
   SupportedChain,
   WalletCredentials,
 } from '../../types';
@@ -12,11 +13,13 @@ dotenv.config();
 export class ConfigService {
   private config: Map<string, any> = new Map();
   private chainsConfigs: ChainConfig[];
-  private networkType: NetworkType | undefined;
+  private networkType: NetworkType;
+  private coinGeckoApiKey: string | undefined;
 
-  constructor() {
+  constructor(networkType: NetworkType) {
     this.loadFromEnv();
     this.chainsConfigs = initSupportedChains();
+    this.networkType = networkType;
   }
 
   public getChainConfig(chainType: SupportedChain): ChainConfig {
@@ -26,16 +29,7 @@ export class ConfigService {
   }
 
   private loadFromEnv(): void {
-    const networkType = process.env.NETWORK_TYPE?.toLowerCase();
-    if (
-      !networkType ||
-      !Object.values(NetworkType).includes(networkType as NetworkType)
-    ) {
-      throw new Error(
-        `Invalid or missing NETWORK_TYPE in environment: received "${networkType}"`
-      );
-    }
-    this.networkType = networkType as NetworkType;
+    this.coinGeckoApiKey = process.env.COINGECKO_API_KEY;
 
     Object.keys(process.env).forEach((key) => {
       if (key.startsWith('WALLET_')) {
@@ -49,7 +43,21 @@ export class ConfigService {
     return {
       privateKey: this.config.get(`WALLET_${upperChain}_PRIVATE_KEY`),
       address: this.config.get(`WALLET_${upperChain}_ADDRESS`),
-      networkType: this.networkType,
+    };
+  }
+
+  public getNetworkType(): NetworkType {
+    return this.networkType;
+  }
+
+  public getCoinGeckoApiKey(): string | undefined {
+    return this.coinGeckoApiKey;
+  }
+
+  public getRippleWalletCredentials(): RippleWalletCredentials {
+    return {
+      mnemonic: this.config.get('WALLET_RIPPLE_MNEMONIC'),
+      networkType: this.networkType as NetworkType,
     };
   }
 }

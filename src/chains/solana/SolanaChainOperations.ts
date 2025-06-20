@@ -20,7 +20,7 @@ export class SolanaChainOperations implements IChainOperations {
 
   constructor(private configService: ConfigService) {
     this.chainConfig = this.configService.getChainConfig(SupportedChain.SOLANA);
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(this.configService);
     this.nativeSdkOps = new SolanaNativeOperations(configService);
     this.solPriceInUsd = undefined;
   }
@@ -28,9 +28,7 @@ export class SolanaChainOperations implements IChainOperations {
   private async getSolUsdPrice(): Promise<BigNumber> {
     if (this.solPriceInUsd) return this.solPriceInUsd;
 
-    const opUSDPrice = (await this.coinGeckoApiService.getSolPriceInUsd())[
-      'solana'
-    ].usd;
+    const opUSDPrice = await this.coinGeckoApiService.getSolPriceInUsd();
     this.solPriceInUsd = new BigNumber(opUSDPrice);
     return this.solPriceInUsd;
   }
@@ -165,11 +163,11 @@ export class SolanaChainOperations implements IChainOperations {
     );
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.submitMemoMessage();
+  async submitMessage(): Promise<FullTransactionResult> {
+    const result = await this.nativeSdkOps.submitMessage();
     return await this.generateFullResult(
       result,
-      SupportedOperation.HCS_MESSAGE_SUBMIT
+      SupportedOperation.SUBMIT_MESSAGE
     );
   }
 
@@ -178,7 +176,7 @@ export class SolanaChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.createNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC20_HARDHAT
+      SupportedOperation.CREATE_ERC20_JSON_RPC
     );
   }
 
@@ -186,7 +184,7 @@ export class SolanaChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.mintNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC20_HARDHAT
+      SupportedOperation.MINT_ERC20_JSON_RPC
     );
   }
 
@@ -194,7 +192,7 @@ export class SolanaChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.transferNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC20_HARDHAT
+      SupportedOperation.TRANSFER_ERC20_JSON_RPC
     );
   }
 
@@ -202,7 +200,7 @@ export class SolanaChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.createNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC721_HARDHAT
+      SupportedOperation.CREATE_ERC721_JSON_RPC
     );
   }
 
@@ -210,7 +208,7 @@ export class SolanaChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.mintNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC721_HARDHAT
+      SupportedOperation.MINT_ERC721_JSON_RPC
     );
   }
 
@@ -218,7 +216,7 @@ export class SolanaChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.transferNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC721_HARDHAT
+      SupportedOperation.TRANSFER_ERC721_JSON_RPC
     );
   }
 

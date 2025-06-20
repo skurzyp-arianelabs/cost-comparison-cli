@@ -27,7 +27,7 @@ export class AvalancheChainOperations implements IChainOperations {
       this.chainConfig.type
     ).privateKey!;
 
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(this.configService);
     this.evmRpcOps = new EvmRpcOperations(
       this.chainConfig.rpcUrls.default.http[0]!,
       privateKey as `0x${string}`
@@ -37,9 +37,7 @@ export class AvalancheChainOperations implements IChainOperations {
   private async getAvaxUsdPrice(): Promise<BigNumber> {
     if (this.avaxPriceInUsd) return this.avaxPriceInUsd;
 
-    const avaxUSDPrice = (await this.coinGeckoApiService.getAvaxPriceInUsd())[
-      'avalanche-2'
-    ].usd;
+    const avaxUSDPrice = await this.coinGeckoApiService.getAvaxPriceInUsd();
     this.avaxPriceInUsd = new BigNumber(avaxUSDPrice);
     return this.avaxPriceInUsd;
   }
@@ -186,11 +184,11 @@ export class AvalancheChainOperations implements IChainOperations {
     );
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
+  async submitMessage(): Promise<FullTransactionResult> {
     const result = await this.evmRpcOps.submitMessage();
     return await this.generateFullResult(
       result,
-      SupportedOperation.HCS_MESSAGE_SUBMIT
+      SupportedOperation.SUBMIT_MESSAGE
     );
   }
 
@@ -199,7 +197,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.createERC20_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC20_HARDHAT
+      SupportedOperation.CREATE_ERC20_JSON_RPC
     );
   }
 
@@ -207,7 +205,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.mintERC20_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC20_HARDHAT
+      SupportedOperation.MINT_ERC20_JSON_RPC
     );
   }
 
@@ -215,7 +213,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.transferERC20_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC20_HARDHAT
+      SupportedOperation.TRANSFER_ERC20_JSON_RPC
     );
   }
 
@@ -223,7 +221,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.createERC721_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC721_HARDHAT
+      SupportedOperation.CREATE_ERC721_JSON_RPC
     );
   }
 
@@ -231,7 +229,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.mintERC721_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC721_HARDHAT
+      SupportedOperation.MINT_ERC721_JSON_RPC
     );
   }
 
@@ -239,7 +237,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.transferERC721_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC721_HARDHAT
+      SupportedOperation.TRANSFER_ERC721_JSON_RPC
     );
   }
 
