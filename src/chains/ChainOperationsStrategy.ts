@@ -16,24 +16,24 @@ export class ChainOperationsStrategy {
       [SupportedOperation.MINT_ERC20_SDK]: () => operations.mintERC20_SDK(),
       [SupportedOperation.TRANSFER_ERC20_SDK]: () => operations.transferERC20_SDK(),
 
-      [SupportedOperation.CREATE_ERC20_HARDHAT]: () => operations.createERC20_RPC(),
-      [SupportedOperation.MINT_ERC20_HARDHAT]: () => operations.mintERC20_RPC(),
-      [SupportedOperation.TRANSFER_ERC20_HARDHAT]: () => operations.transferERC20_RPC(),
+      [SupportedOperation.CREATE_ERC20_JSON_RPC]: () => operations.createERC20_RPC(),
+      [SupportedOperation.MINT_ERC20_JSON_RPC]: () => operations.mintERC20_RPC(),
+      [SupportedOperation.TRANSFER_ERC20_JSON_RPC]: () => operations.transferERC20_RPC(),
 
       [SupportedOperation.CREATE_ERC721_SDK]: () => operations.createERC721_SDK(),
       [SupportedOperation.MINT_ERC721_SDK]: () => operations.mintERC721_SDK(),
       [SupportedOperation.TRANSFER_ERC721_SDK]: () => operations.transferERC721_SDK(),
 
-      [SupportedOperation.CREATE_ERC721_HARDHAT]: () => operations.createERC721_RPC(),
-      [SupportedOperation.MINT_ERC721_HARDHAT]: () => operations.mintERC721_RPC(),
-      [SupportedOperation.TRANSFER_ERC721_HARDHAT]: () => operations.transferERC721_RPC(),
+      [SupportedOperation.CREATE_ERC721_JSON_RPC]: () => operations.createERC721_RPC(),
+      [SupportedOperation.MINT_ERC721_JSON_RPC]: () => operations.mintERC721_RPC(),
+      [SupportedOperation.TRANSFER_ERC721_JSON_RPC]: () => operations.transferERC721_RPC(),
 
       [SupportedOperation.CREATE_NATIVE_NFT]: () => operations.createNativeNFT(),
       [SupportedOperation.ASSOCIATE_NATIVE_NFT]: () => operations.associateNativeNFT(),
       [SupportedOperation.MINT_NATIVE_NFT]: () => operations.mintNativeNFT(),
       [SupportedOperation.TRANSFER_NATIVE_NFT]: () => operations.transferNativeNFT(),
 
-      [SupportedOperation.HCS_MESSAGE_SUBMIT]: () => operations.hcsSubmitMessage(),
+      [SupportedOperation.SUBMIT_MESSAGE]: () => operations.hcsSubmitMessage(),
     };
 
     const method = operationMap[operation];

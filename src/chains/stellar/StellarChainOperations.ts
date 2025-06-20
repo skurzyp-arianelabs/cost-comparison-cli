@@ -171,7 +171,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.submitMemoMessage();
     return await this.generateFullResult(
       result,
-      SupportedOperation.HCS_MESSAGE_SUBMIT
+      SupportedOperation.SUBMIT_MESSAGE
     );
   }
 
@@ -180,7 +180,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.createNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC20_HARDHAT
+      SupportedOperation.CREATE_ERC20_JSON_RPC
     );
   }
 
@@ -188,7 +188,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.mintNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC20_HARDHAT
+      SupportedOperation.MINT_ERC20_JSON_RPC
     );
   }
 
@@ -196,7 +196,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.transferNativeFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC20_HARDHAT
+      SupportedOperation.TRANSFER_ERC20_JSON_RPC
     );
   }
 
@@ -204,7 +204,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.createNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC721_HARDHAT
+      SupportedOperation.CREATE_ERC721_JSON_RPC
     );
   }
 
@@ -212,7 +212,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.mintNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC721_HARDHAT
+      SupportedOperation.MINT_ERC721_JSON_RPC
     );
   }
 
@@ -220,7 +220,7 @@ export class StellarChainOperations implements IChainOperations {
     const result = await this.nativeSdkOps.transferNativeNFT();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC721_HARDHAT
+      SupportedOperation.TRANSFER_ERC721_JSON_RPC
     );
   }
 

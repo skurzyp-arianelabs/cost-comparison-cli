@@ -66,20 +66,20 @@ export enum SupportedOperation {
   MINT_NATIVE_NFT = 'mint-native-nft',
   TRANSFER_NATIVE_NFT = 'transfer-native-nft',
 
-  // ERC20 Smart Contracts (Hardhat JSON RPC)
-  CREATE_ERC20_HARDHAT = 'deploy-erc20-hardhat',
-  MINT_ERC20_HARDHAT = 'mint-erc20-hardhat',
-  TRANSFER_ERC20_HARDHAT = 'transfer-erc20-hardhat',
+  // ERC20 Smart Contracts (JSON RPC)
+  CREATE_ERC20_JSON_RPC = 'deploy-erc20-json-rpc',
+  MINT_ERC20_JSON_RPC = 'mint-erc20-json-rpc',
+  TRANSFER_ERC20_JSON_RPC = 'transfer-erc20-json-rpc',
 
   // ERC20 Smart Contracts (SDK)
   CREATE_ERC20_SDK = 'deploy-erc20-sdk',
   MINT_ERC20_SDK = 'mint-erc20-sdk',
   TRANSFER_ERC20_SDK = 'transfer-erc20-sdk',
 
-  // ERC721 Smart Contracts (Hardhat JSON RPC)
-  CREATE_ERC721_HARDHAT = 'deploy-erc721-hardhat',
-  MINT_ERC721_HARDHAT = 'mint-erc721-hardhat',
-  TRANSFER_ERC721_HARDHAT = 'transfer-erc721-hardhat',
+  // ERC721 Smart Contracts (JSON RPC)
+  CREATE_ERC721_JSON_RPC = 'deploy-erc721-json-rpc',
+  MINT_ERC721_JSON_RPC = 'mint-erc721-json-rpc',
+  TRANSFER_ERC721_JSON_RPC = 'transfer-erc721-json-rpc',
 
   // ERC721 Smart Contracts (SDK)
   CREATE_ERC721_SDK = 'deploy-erc721-sdk',
@@ -87,7 +87,7 @@ export enum SupportedOperation {
   TRANSFER_ERC721_SDK = 'transfer-erc721-sdk',
 
   // HCS
-  HCS_MESSAGE_SUBMIT = 'hcs-message-submit',
+  SUBMIT_MESSAGE = 'submit-message',
 }
 
 export enum NetworkType {
@@ -101,3 +101,13 @@ export type AccountData = {
   privateKey: string;
   publicKey: string;
 };
+export interface TransactionRecord {
+  chain: string;
+  operation: string;
+  usdCost: string;
+  gasUsed: string;
+  transactionHash: string;
+  nativeCurrencySymbol: string;
+  status: string;
+  timestamp: string;
+}
