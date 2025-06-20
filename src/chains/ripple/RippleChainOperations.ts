@@ -178,17 +178,17 @@ export class RippleChainOperations implements IChainOperations {
 
   async createERC20_RPC(): Promise<FullTransactionResult> {
     return this.getNotApplicableResponse(
-      SupportedOperation.CREATE_ERC20_HARDHAT
+      SupportedOperation.CREATE_ERC20_JSON_RPC
     );
   }
 
   async mintERC20_RPC(): Promise<FullTransactionResult> {
-    return this.getNotApplicableResponse(SupportedOperation.MINT_ERC20_HARDHAT);
+    return this.getNotApplicableResponse(SupportedOperation.MINT_ERC20_JSON_RPC);
   }
 
   async transferERC20_RPC(): Promise<FullTransactionResult> {
     return this.getNotApplicableResponse(
-      SupportedOperation.TRANSFER_ERC20_HARDHAT
+      SupportedOperation.TRANSFER_ERC20_JSON_RPC
     );
   }
 
@@ -208,19 +208,19 @@ export class RippleChainOperations implements IChainOperations {
 
   async createERC721_RPC(): Promise<FullTransactionResult> {
     return this.getNotApplicableResponse(
-      SupportedOperation.CREATE_ERC721_HARDHAT
+      SupportedOperation.CREATE_ERC721_JSON_RPC
     );
   }
 
   async mintERC721_RPC(): Promise<FullTransactionResult> {
     return this.getNotApplicableResponse(
-      SupportedOperation.MINT_ERC721_HARDHAT
+      SupportedOperation.MINT_ERC721_JSON_RPC
     );
   }
 
   async transferERC721_RPC(): Promise<FullTransactionResult> {
     return this.getNotApplicableResponse(
-      SupportedOperation.TRANSFER_ERC721_HARDHAT
+      SupportedOperation.TRANSFER_ERC721_JSON_RPC
     );
   }
 
@@ -269,17 +269,17 @@ export class RippleChainOperations implements IChainOperations {
     }
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
+  async submitMessage(): Promise<FullTransactionResult> {
     try {
-      const response = await this.rippleNativeOperations.hcsSubmitMessage();
+      const response = await this.rippleNativeOperations.submitMessage();
       return await this.getResponse(
         response,
-        SupportedOperation.HCS_MESSAGE_SUBMIT
+        SupportedOperation.SUBMIT_MESSAGE
       );
     } catch (error) {
       return this.getErrorResponse(
         error,
-        SupportedOperation.HCS_MESSAGE_SUBMIT
+        SupportedOperation.SUBMIT_MESSAGE
       );
     }
   }

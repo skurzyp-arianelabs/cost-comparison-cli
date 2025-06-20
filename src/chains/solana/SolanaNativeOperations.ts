@@ -431,7 +431,7 @@ export class SolanaNativeOperations implements ISolanaNativeOperations {
     return this.formatTransactionResult(transferSignature);
   }
 
-  async submitMemoMessage(): Promise<TransactionResult> {
+  async submitMessage(): Promise<TransactionResult> {
     const payer = await this.getPayerFromWalletService();
     const recipient = Keypair.generate();
 

@@ -15,8 +15,8 @@ export interface IRippleNativeOperations {
 
   transferNativeNFT(offerId: string): Promise<TxResponse<SubmittableTransaction>>;
 
-  // HCS Operation
-  hcsSubmitMessage(): Promise<TxResponse<SubmittableTransaction>>;
+  // Message/memo Operation
+  submitMessage(): Promise<TxResponse<SubmittableTransaction>>;
 
   isHealthy(): Promise<boolean>;
 }
