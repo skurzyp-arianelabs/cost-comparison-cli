@@ -105,3 +105,13 @@ export type AccountData = {
   privateKey: string;
   publicKey: string;
 };
+export interface TransactionRecord {
+  chain: string;
+  operation: string;
+  usdCost: string;
+  gasUsed: string;
+  transactionHash: string;
+  nativeCurrencySymbol: string;
+  status: string;
+  timestamp: string;
+}

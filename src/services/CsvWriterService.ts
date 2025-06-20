@@ -13,7 +13,7 @@ export interface CsvRow {
   transactionLink?: string;
 }
 
-export class CsvService {
+export class CsvWriterService {
   private readonly outputDir: string;
 
   constructor(outputDir = 'results') {
@@ -44,8 +44,8 @@ export class CsvService {
     return `${baseName}_${month}-${day}-${year}_${time}.csv`;
   }
 
-  public saveCsv(baseName: string, data: CsvRow[]): void {
-    if (!data.length) return;
+  public saveCsv(baseName: string, data: CsvRow[]): string {
+    if (!data.length) return '';
 
     const headers = Object.keys(data[0]!);
     const csvContent = [
@@ -60,5 +60,7 @@ export class CsvService {
 
     fs.writeFileSync(fullPath, csvContent, 'utf8');
     console.log(`✅ CSV saved to: ${fullPath}`);
+
+    return fullPath
   }
 }
