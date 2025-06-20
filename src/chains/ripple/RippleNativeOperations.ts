@@ -243,7 +243,7 @@ export class RippleNativeOperations implements IRippleNativeOperations {
     return acceptOfferResult;
   }
 
-  async hcsSubmitMessage(): Promise<TxResponse<SubmittableTransaction>> {
+  async submitMessage(): Promise<TxResponse<SubmittableTransaction>> {
     await this.initWallets();
     await this.rippleClient.connect();
     const memoTx = await this.rippleClient.autofill({

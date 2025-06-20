@@ -443,7 +443,7 @@ export class StellarNativeOperations implements IStellarNativeOperations {
     return this.formatTransactionResult(mintResult);
   }
 
-  public async submitMemoMessage(): Promise<TransactionResult> {
+  public async submitMessage(): Promise<TransactionResult> {
     const {
       issuerKeypair,
       networkPassphrase,

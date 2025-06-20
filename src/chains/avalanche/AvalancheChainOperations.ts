@@ -184,11 +184,11 @@ export class AvalancheChainOperations implements IChainOperations {
     );
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
+  async submitMessage(): Promise<FullTransactionResult> {
     const result = await this.evmRpcOps.submitMessage();
     return await this.generateFullResult(
       result,
-      SupportedOperation.HCS_MESSAGE_SUBMIT
+      SupportedOperation.SUBMIT_MESSAGE
     );
   }
 
@@ -197,7 +197,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.createERC20_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC20_HARDHAT
+      SupportedOperation.CREATE_ERC20_JSON_RPC
     );
   }
 
@@ -205,7 +205,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.mintERC20_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC20_HARDHAT
+      SupportedOperation.MINT_ERC20_JSON_RPC
     );
   }
 
@@ -213,7 +213,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.transferERC20_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC20_HARDHAT
+      SupportedOperation.TRANSFER_ERC20_JSON_RPC
     );
   }
 
@@ -221,7 +221,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.createERC721_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.CREATE_ERC721_HARDHAT
+      SupportedOperation.CREATE_ERC721_JSON_RPC
     );
   }
 
@@ -229,7 +229,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.mintERC721_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.MINT_ERC721_HARDHAT
+      SupportedOperation.MINT_ERC721_JSON_RPC
     );
   }
 
@@ -237,7 +237,7 @@ export class AvalancheChainOperations implements IChainOperations {
     const result = await this.evmRpcOps.transferERC721_RPC();
     return await this.generateFullResult(
       result,
-      SupportedOperation.TRANSFER_ERC721_HARDHAT
+      SupportedOperation.TRANSFER_ERC721_JSON_RPC
     );
   }
 

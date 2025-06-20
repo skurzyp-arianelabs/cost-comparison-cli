@@ -21,9 +21,6 @@ export class HederaMirrorNodeService {
       case 'testnet':
         this.baseUrl = 'https://testnet.mirrornode.hedera.com/api/v1';
         break;
-      case 'previewnet':
-        this.baseUrl = 'https://previewnet.mirrornode.hedera.com/api/v1';
-        break;
       default:
         throw new Error('Unsupported or undefined network type for Hedera!');
     }

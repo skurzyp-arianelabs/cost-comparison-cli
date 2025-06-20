@@ -228,9 +228,6 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       case NetworkType.TESTNET:
         client = Client.forTestnet();
         break;
-      case NetworkType.PREVIEWNET:
-        client = Client.forPreviewnet();
-        break;
       default:
         throw new Error('Unsupported network type');
     }
@@ -388,7 +385,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
   }
 
   /**
-   * key: hcs-message-submit
+   * key: submit-message
    * 1. Create a topic.
    * 2. Submit a 900-bytes long message to the topic.
    */
