@@ -34,7 +34,7 @@ testnet
 
 > **Note:** For Solana, `Devnet` corresponds to:
 > ```bash
-> pnpm start --network=testnet --chains=solana ...
+> pnpm start --network=testnet --chains=solana --operations=create-native-ft
 > ```
 > [TODO: validate this mapping]
 
@@ -74,15 +74,15 @@ These operations use ERC-20 and ERC-721 standards. Implemented via:
 
 **Action Slugs:**
 ```bash
-deploy-erc20-hardhat
-mint-erc20-hardhat
-transfer-erc20-hardhat
+deploy-erc20-json-rpc
+mint-erc20-json-rpc
+transfer-erc20-json-rpc
 deploy-erc20-sdk
 mint-erc20-sdk
 transfer-erc20-sdk
-deploy-erc721-hardhat
-mint-erc721-hardhat
-transfer-erc721-hardhat
+deploy-erc721-json-rpc
+mint-erc721-json-rpc
+transfer-erc721-json-rpc
 deploy-erc721-sdk
 mint-erc721-sdk
 transfer-erc721-sdk
@@ -102,7 +102,7 @@ This simulates submitting a message on-chain.
 
 **Action Slug:**
 ```bash
-hcs-message-submit
+submit-message
 ```
 
 * **Message size:** 900 bytes on most chains.
@@ -159,19 +159,19 @@ The following table demonstrates how we handle special cases where native blockc
    associate-native-nft,\
    mint-native-nft,\
    transfer-native-nft,\
-   deploy-erc20-hardhat,\
-   mint-erc20-hardhat,\
-   transfer-erc20-hardhat,\
+   deploy-erc20-json-rpc,\
+   mint-erc20-json-rpc,\
+   transfer-erc20-json-rpc,\
    deploy-erc20-sdk,\
    mint-erc20-sdk,\
    transfer-erc20-sdk,\
-   deploy-erc721-hardhat,\
-   mint-erc721-hardhat,\
-   transfer-erc721-hardhat,\
+   deploy-erc721-json-rpc,\
+   mint-erc721-json-rpc,\
+   transfer-erc721-json-rpc,\
    deploy-erc721-sdk,\
    mint-erc721-sdk,\
    transfer-erc721-sdk,\
-   hcs-message-submit
+   submit-message
    ```
 
 ---
