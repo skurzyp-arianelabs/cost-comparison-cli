@@ -15,7 +15,7 @@ export interface TransactionResult {
   gasPriceL1?: string | undefined;
   feeL1?: string | undefined;
   totalCost?: string | undefined;
-  status: 'success' | 'failed';
+  status: 'success' | 'failed' | 'not_applicable';
   timestamp: string;
   error?: string | undefined;
   blockNumber?: string;
@@ -35,6 +35,11 @@ export interface WalletCredentials {
   privateKey?: string;
   address?: string;
   networkType?: NetworkType;
+}
+
+export interface RippleWalletCredentials {
+  mnemonic: string;
+  networkType: NetworkType;
 }
 
 export interface ChainConfig {
@@ -66,28 +71,28 @@ export enum SupportedOperation {
   MINT_NATIVE_NFT = 'mint-native-nft',
   TRANSFER_NATIVE_NFT = 'transfer-native-nft',
 
-  // ERC20 Smart Contracts (Hardhat JSON RPC)
-  CREATE_ERC20_HARDHAT = 'deploy-erc20-hardhat',
-  MINT_ERC20_HARDHAT = 'mint-erc20-hardhat',
-  TRANSFER_ERC20_HARDHAT = 'transfer-erc20-hardhat',
+  // ERC20 Smart Contracts (JSON RPC)
+  CREATE_ERC20_JSON_RPC = 'deploy-erc20-json-rpc',
+  MINT_ERC20_JSON_RPC = 'mint-erc20-json-rpc',
+  TRANSFER_ERC20_JSON_RPC = 'transfer-erc20-json-rpc',
 
   // ERC20 Smart Contracts (SDK)
   CREATE_ERC20_SDK = 'deploy-erc20-sdk',
   MINT_ERC20_SDK = 'mint-erc20-sdk',
   TRANSFER_ERC20_SDK = 'transfer-erc20-sdk',
 
-  // ERC721 Smart Contracts (Hardhat JSON RPC)
-  CREATE_ERC721_HARDHAT = 'deploy-erc721-hardhat',
-  MINT_ERC721_HARDHAT = 'mint-erc721-hardhat',
-  TRANSFER_ERC721_HARDHAT = 'transfer-erc721-hardhat',
+  // ERC721 Smart Contracts (JSON RPC)
+  CREATE_ERC721_JSON_RPC = 'deploy-erc721-json-rpc',
+  MINT_ERC721_JSON_RPC = 'mint-erc721-json-rpc',
+  TRANSFER_ERC721_JSON_RPC = 'transfer-erc721-json-rpc',
 
   // ERC721 Smart Contracts (SDK)
   CREATE_ERC721_SDK = 'deploy-erc721-sdk',
   MINT_ERC721_SDK = 'mint-erc721-sdk',
   TRANSFER_ERC721_SDK = 'transfer-erc721-sdk',
 
-  // HCS
-  HCS_MESSAGE_SUBMIT = 'hcs-message-submit',
+  // HCS or passing message as transfer memo
+  SUBMIT_MESSAGE = 'submit-message',
 }
 
 export enum NetworkType {

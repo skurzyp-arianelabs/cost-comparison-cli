@@ -108,7 +108,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   }
 
   /**
-   * key: deploy-erc20-hardhat
+   * key: deploy-erc20-json-rpc
    * 1. Deploy ERC20 precompiled contract with use of viem
    */
   async createERC20_RPC(): Promise<TransactionResult> {
@@ -123,7 +123,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   }
 
   /**
-   * key: mint-erc20-hardhat
+   * key: mint-erc20-json-rpc
    * 1. Deploy ERC20 precompiled contract with use of viem
    * 2. Mint ERC20 tokens
    */
@@ -161,7 +161,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   }
 
   /**
-   * key: deploy-erc721-hardhat
+   * key: deploy-erc721-json-rpc
    * 1. Deploy precompiled ERC721 contract with use of viem
    */
   async createERC721_RPC(): Promise<TransactionResult> {
@@ -175,7 +175,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   }
 
   /**
-   * key: mint-erc721-hardhat
+   * key: mint-erc721-json-rpc
    * 1. deploy a precompiled ERC721 smart contract with viem
    * 2. Mint ERC721
    */
@@ -203,7 +203,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   }
 
   /**
-   * key: transfer-erc20-hardhat
+   * key: transfer-erc20-json-rpc
    * 0. create account
    * 1. Deploy a precompiled ERC20 smart contract with viem
    * 2. Mint ERC20
@@ -251,7 +251,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   }
 
   /**
-   * Key: transfer-erc721-hardhat
+   * Key: transfer-erc721-json-rpc
    * 0. Create an account that will receive the ERC721
    * 1. Deploy a precompiled ERC721 contract with the use of viem
    * 2. Mint ERC721
@@ -312,7 +312,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   }
 
   /**
-   * Key: hcs-message-submit
+   * Key: submit-message
    * Sending a message is handled as attaching the text to transfer transaction memo
    * 0. Create an account that will receive transaction
    * 1. Send transaction with an attached message

@@ -15,6 +15,7 @@ export interface IEvmRpcOperations {
 
   transferERC721_RPC(): Promise<TransactionResult>;
 
+  // Message/Memo Operations
   submitMessage(): Promise<TransactionResult>;
 
   // Health check

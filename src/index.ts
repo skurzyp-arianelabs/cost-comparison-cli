@@ -6,7 +6,7 @@ async function main() {
     console.log('--- CLI FLAGS ---');
     console.log(cliConfig);
 
-    const tool = new CostComparisonTool();
+    const tool = new CostComparisonTool(cliConfig.network);
     await tool.run(cliConfig.chains, cliConfig.operations);
   } catch (error) {
     console.error(
