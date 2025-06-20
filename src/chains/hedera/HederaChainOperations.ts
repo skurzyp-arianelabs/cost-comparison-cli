@@ -41,13 +41,11 @@ export class HederaChainOperations implements IChainOperations {
   private async getHbarUsdPrice(): Promise<BigNumber> {
     if (this.hederaPriceInUsd) return this.hederaPriceInUsd;
 
-    const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
-      'hedera-hashgraph'
-    ].usd;
-
+    const hbarUSDPrice = await this.coinGeckoApiService.getHbarPriceInUsd();
     this.hederaPriceInUsd = new BigNumber(hbarUSDPrice);
     return this.hederaPriceInUsd;
   }
+
 
   async generateFullResult(
     partialResult: TransactionResult,
