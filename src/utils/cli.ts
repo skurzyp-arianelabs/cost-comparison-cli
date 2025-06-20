@@ -12,10 +12,12 @@ const cliSchema = z.object({
 
   chains: z
     .string()
-    .transform((val) => val.split(','))
+    .transform((val) => (val === 'all' ? supportedChains : val.split(',')))
     .refine(
       (chains): chains is SupportedChain[] =>
-        chains.every((chain) => supportedChains.includes(chain as SupportedChain)),
+        chains.every((chain) =>
+          supportedChains.includes(chain as SupportedChain)
+        ),
       {
         message: `Invalid chain provided. Allowed chains: ${supportedChains.join(', ')}`,
       }
@@ -23,10 +25,12 @@ const cliSchema = z.object({
 
   operations: z
     .string()
-    .transform((val) => val.split(','))
+    .transform((val) => (val === 'all' ? supportedOperations : val.split(',')))
     .refine(
       (ops): ops is SupportedOperation[] =>
-        ops.every((op) => supportedOperations.includes(op as SupportedOperation)),
+        ops.every((op) =>
+          supportedOperations.includes(op as SupportedOperation)
+        ),
       {
         message: `Invalid method provided. Allowed operations: ${supportedOperations.join(', ')}`,
       }
