@@ -28,9 +28,7 @@ export class SolanaChainOperations implements IChainOperations {
   private async getSolUsdPrice(): Promise<BigNumber> {
     if (this.solPriceInUsd) return this.solPriceInUsd;
 
-    const opUSDPrice = (await this.coinGeckoApiService.getSolPriceInUsd())[
-      'solana'
-    ].usd;
+    const opUSDPrice = await this.coinGeckoApiService.getSolPriceInUsd();
     this.solPriceInUsd = new BigNumber(opUSDPrice);
     return this.solPriceInUsd;
   }
@@ -165,8 +163,8 @@ export class SolanaChainOperations implements IChainOperations {
     );
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.submitMemoMessage();
+  async submitMessage(): Promise<FullTransactionResult> {
+    const result = await this.nativeSdkOps.submitMessage();
     return await this.generateFullResult(
       result,
       SupportedOperation.SUBMIT_MESSAGE

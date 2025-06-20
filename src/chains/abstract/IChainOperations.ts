@@ -47,8 +47,8 @@ export interface IChainOperations {
 
   transferERC721_RPC(): Promise<FullTransactionResult>;
 
-  // HCS Operation
-  hcsSubmitMessage(): Promise<FullTransactionResult>;
+  // Message/Memo Operation
+  submitMessage(): Promise<FullTransactionResult>;
 
   // Utility
   getChainInfo(): ChainConfig;

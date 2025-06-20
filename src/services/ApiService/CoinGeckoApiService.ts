@@ -1,63 +1,70 @@
 import { z } from 'zod';
 import { ConfigService } from '../ConfigService/ConfigService';
 
-const coinGeckoSchemas = {
-  'hedera-hashgraph': z.object({
-    'hedera-hashgraph': z.object({ usd: z.number() }),
-  }),
-  ethereum: z.object({ ethereum: z.object({ usd: z.number() }) }),
-  solana: z.object({ solana: z.object({ usd: z.number() }) }),
-  stellar: z.object({ stellar: z.object({ usd: z.number() }) }),
-  'avalanche-2': z.object({ 'avalanche-2': z.object({ usd: z.number() }) }),
-};
+const priceResponseSchema = z.object({
+  usd: z.number(),
+});
 
 export class CoinGeckoApiService {
   constructor(private configService: ConfigService) {}
 
-  async getPriceInUsd<T>(tokenId: string, schema: z.ZodType<T>): Promise<T> {
+  private async fetchUsdPrice(tokenId: string): Promise<number> {
     const apiKey = this.configService.getCoinGeckoApiKey();
-    const baseUrl = 'https://api.coingecko.com/api/v3';
-    const apiKeyParam = apiKey ? `&x_cg_demo_api_key=${apiKey}` : '';
-    const url = `${baseUrl}/simple/price?ids=${tokenId}&vs_currencies=usd${apiKeyParam}`;
+    const baseUrl = 'https://api.coingecko.com/api/v3/simple/price';
+    const url = `${baseUrl}?ids=${tokenId}&vs_currencies=usd`;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (apiKey) {
+      headers['x-cg-demo-api-key'] = apiKey; // or use 'x-cg-pro-api-key' for Pro
+    }
 
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
+      const errorBody = await response.text();
       throw new Error(
-        `Failed to fetch ${tokenId} price (status ${response.status}). The response body: ${await response.text()}. 
-        NOTE: This issue might be caused by the CoinGecko API rate limiting. Please consider adding free COINGECKO_API_KEY.`
+        `Failed to fetch price for ${tokenId} (status ${response.status}). Body: ${errorBody}. ` +
+        `TIP: CoinGecko API rate limiting may be involved. Try adding or rotating COINGECKO_API_KEY.`
       );
     }
 
     const json = await response.json();
-    return schema.parse(json);
+
+    const validated = priceResponseSchema.safeParse(json[tokenId]);
+    if (!validated.success) {
+      throw new Error(`Unexpected response shape for ${tokenId}: ${JSON.stringify(json)}`);
+    }
+
+    return validated.data.usd;
   }
 
   async getHbarPriceInUsd() {
-    return this.getPriceInUsd(
-      'hedera-hashgraph',
-      coinGeckoSchemas['hedera-hashgraph']
-    );
+    return this.fetchUsdPrice('hedera-hashgraph');
   }
 
   async getSolPriceInUsd() {
-    return this.getPriceInUsd('solana', coinGeckoSchemas['solana']);
+    return this.fetchUsdPrice('solana');
+  }
+
+  async getRipplePriceInUsd() {
+    return this.fetchUsdPrice('ripple');
   }
 
   async getStellarPriceInUsd() {
-    return this.getPriceInUsd('stellar', coinGeckoSchemas['stellar']);
+    return this.fetchUsdPrice('stellar');
   }
 
   async getEthPriceInUsd() {
-    return this.getPriceInUsd('ethereum', coinGeckoSchemas['ethereum']);
+    return this.fetchUsdPrice('ethereum');
   }
 
   async getAvaxPriceInUsd() {
-    return this.getPriceInUsd('avalanche-2', coinGeckoSchemas['avalanche-2']);
+    return this.fetchUsdPrice('avalanche-2');
   }
 }

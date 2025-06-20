@@ -38,9 +38,7 @@ export class OptimismChainOperations implements IChainOperations {
   private async getEthUsdPrice(): Promise<BigNumber> {
     if (this.ethPriceBN) return this.ethPriceBN;
 
-    const ethUSDPrice = (await this.coinGeckoApiService.getEthPriceInUsd())[
-      'ethereum'
-    ].usd;
+    const ethUSDPrice = await this.coinGeckoApiService.getEthPriceInUsd();
     this.ethPriceBN = new BigNumber(ethUSDPrice);
     return this.ethPriceBN;
   }
@@ -76,7 +74,7 @@ export class OptimismChainOperations implements IChainOperations {
       chain: this.chainConfig.type,
       operation,
       totalCost: totalCostEth.toString(),
-      usdCost: usdCostBN.multipliedBy(ethPriceBN).toString(),
+      usdCost: usdCostBN.toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
   }
@@ -186,7 +184,7 @@ export class OptimismChainOperations implements IChainOperations {
     );
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
+  async submitMessage(): Promise<FullTransactionResult> {
     const result = await this.evmRpcOps.submitMessage();
     return await this.generateFullResult(
       result,

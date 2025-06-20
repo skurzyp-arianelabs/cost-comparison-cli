@@ -33,7 +33,7 @@ export class ChainOperationsStrategy {
       [SupportedOperation.MINT_NATIVE_NFT]: () => operations.mintNativeNFT(),
       [SupportedOperation.TRANSFER_NATIVE_NFT]: () => operations.transferNativeNFT(),
 
-      [SupportedOperation.SUBMIT_MESSAGE]: () => operations.hcsSubmitMessage(),
+      [SupportedOperation.SUBMIT_MESSAGE]: () => operations.submitMessage(),
     };
 
     const method = operationMap[operation];

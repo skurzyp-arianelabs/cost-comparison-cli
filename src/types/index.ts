@@ -15,7 +15,7 @@ export interface TransactionResult {
   gasPriceL1?: string | undefined;
   feeL1?: string | undefined;
   totalCost?: string | undefined;
-  status: 'success' | 'failed';
+  status: 'success' | 'failed' | 'not_applicable';
   timestamp: string;
   error?: string | undefined;
   blockNumber?: string;
@@ -35,6 +35,11 @@ export interface WalletCredentials {
   privateKey?: string;
   address?: string;
   networkType?: NetworkType;
+}
+
+export interface RippleWalletCredentials {
+  mnemonic: string;
+  networkType: NetworkType;
 }
 
 export interface ChainConfig {
@@ -86,14 +91,13 @@ export enum SupportedOperation {
   MINT_ERC721_SDK = 'mint-erc721-sdk',
   TRANSFER_ERC721_SDK = 'transfer-erc721-sdk',
 
-  // HCS
+  // HCS or passing message as transfer memo
   SUBMIT_MESSAGE = 'submit-message',
 }
 
 export enum NetworkType {
   TESTNET = 'testnet',
   MAINNET = 'mainnet',
-  PREVIEWNET = 'previewnet',
 }
 
 export type AccountData = {
