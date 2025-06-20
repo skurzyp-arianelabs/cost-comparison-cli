@@ -1,11 +1,10 @@
-import { ConfigService } from "../ConfigService/ConfigService";
-import { SupportedChain } from "../../types";
-import { AccountId } from "@hashgraph/sdk";
-import axios, { AxiosInstance } from "axios";
+import { ConfigService } from '../ConfigService/ConfigService';
+import { AccountId } from '@hashgraph/sdk';
+import axios, { AxiosInstance } from 'axios';
 
 export enum HederaKeyType {
-  ECDSA_SECP256K1 = "ECDSA_SECP256K1",
-  ED25519 = "ED25519",
+  ECDSA_SECP256K1 = 'ECDSA_SECP256K1',
+  ED25519 = 'ED25519',
 }
 
 export class HederaMirrorNodeService {
@@ -14,7 +13,7 @@ export class HederaMirrorNodeService {
   private axiosInstance: AxiosInstance;
 
   constructor(configService: ConfigService) {
-    this.networkType = configService.getWalletCredentials(SupportedChain.HEDERA).networkType!;
+    this.networkType = configService.getNetworkType();
     switch (this.networkType) {
       case 'mainnet':
         this.baseUrl = 'https://mainnet.mirrornode.hedera.com/api/v1';
@@ -32,7 +31,7 @@ export class HederaMirrorNodeService {
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       headers: {
-        'accept': 'application/json',
+        accept: 'application/json',
       },
     });
   }
@@ -43,16 +42,20 @@ export class HederaMirrorNodeService {
       const response = await this.axiosInstance.get(`/accounts/${id}`);
       const keyType = response.data?.key?._type;
 
-      if (keyType === HederaKeyType.ECDSA_SECP256K1 || keyType === HederaKeyType.ED25519) {
+      if (
+        keyType === HederaKeyType.ECDSA_SECP256K1 ||
+        keyType === HederaKeyType.ED25519
+      ) {
         return keyType;
       } else {
         throw new Error(`Unknown key type: ${keyType}`);
       }
     } catch (error) {
-      throw new Error(`Failed to fetch account info: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to fetch account info: ${(error as Error).message}`
+      );
     }
   }
-
 
   async getEvmAddress(accountId: AccountId): Promise<string> {
     const id = accountId.toString();
@@ -66,7 +69,9 @@ export class HederaMirrorNodeService {
         throw new Error(`EVM address not found for account ${id}`);
       }
     } catch (error) {
-      throw new Error(`Failed to fetch EVM address: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to fetch EVM address: ${(error as Error).message}`
+      );
     }
   }
 }

@@ -30,7 +30,7 @@ export class HederaChainOperations implements IChainOperations {
     ).privateKey!;
     const hexPrivateKey = parseDerKeyToHex(privateKey);
 
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(configService);
     this.evmRpcOps = new EvmRpcOperations(
       this.chainConfig.rpcUrls.default.http[0]!,
       hexPrivateKey
