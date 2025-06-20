@@ -2,6 +2,7 @@ import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { SupportedChain } from '../../types';
 import { HederaChainOperations } from '../hedera/HederaChainOperations';
 import { IChainOperations } from '../abstract/IChainOperations';
+import { RippleChainOperations } from '../ripple/RippleChainOperations';
 import { AvalancheChainOperations } from '../avalanche/AvalancheChainOperations';
 import { SolanaChainOperations } from '../solana/SolanaChainOperations';
 import { OptimismChainOperations } from '../optimism/OptimismChainOperations';
@@ -25,6 +26,8 @@ export class ChainOperationsFactory {
         return new HederaChainOperations(this.configService);
       case SupportedChain.OPTIMISM:
         return new OptimismChainOperations(this.configService);
+      case SupportedChain.RIPPLE:
+        return new RippleChainOperations(this.configService);
       case SupportedChain.AVALANCHE:
         return new AvalancheChainOperations(this.configService);
       case SupportedChain.SOLANA:

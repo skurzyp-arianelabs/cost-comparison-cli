@@ -74,7 +74,7 @@ const rippleMainnet: ChainConfig = {
   },
   rpcUrls: {
     default: {
-      http: ['https://s1.ripple.com:51234'],
+      http: ['wss://s1.ripple.com'],
     },
   },
 };
@@ -90,7 +90,7 @@ const rippleTestnet: ChainConfig = {
   },
   rpcUrls: {
     default: {
-      http: ['https://s.altnet.rippletest.net:51234'],
+      http: ['wss://s.altnet.rippletest.net:51233'],
     },
   },
 };

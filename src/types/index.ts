@@ -15,7 +15,7 @@ export interface TransactionResult {
   gasPriceL1?: string | undefined;
   feeL1?: string | undefined;
   totalCost?: string | undefined;
-  status: 'success' | 'failed';
+  status: 'success' | 'failed' | 'not_applicable';
   timestamp: string;
   error?: string | undefined;
   blockNumber?: string;
@@ -35,6 +35,11 @@ export interface WalletCredentials {
   privateKey?: string;
   address?: string;
   networkType?: NetworkType;
+}
+
+export interface RippleWalletCredentials {
+  mnemonic: string;
+  networkType: NetworkType;
 }
 
 export interface ChainConfig {

@@ -28,9 +28,7 @@ export class SolanaChainOperations implements IChainOperations {
   private async getSolUsdPrice(): Promise<BigNumber> {
     if (this.solPriceInUsd) return this.solPriceInUsd;
 
-    const opUSDPrice = (await this.coinGeckoApiService.getSolPriceInUsd())[
-      'solana'
-    ].usd;
+    const opUSDPrice = await this.coinGeckoApiService.getSolPriceInUsd();
     this.solPriceInUsd = new BigNumber(opUSDPrice);
     return this.solPriceInUsd;
   }

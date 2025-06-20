@@ -38,9 +38,7 @@ export class OptimismChainOperations implements IChainOperations {
   private async getEthUsdPrice(): Promise<BigNumber> {
     if (this.ethPriceBN) return this.ethPriceBN;
 
-    const ethUSDPrice = (await this.coinGeckoApiService.getEthPriceInUsd())[
-      'ethereum'
-    ].usd;
+    const ethUSDPrice = await this.coinGeckoApiService.getEthPriceInUsd();
     this.ethPriceBN = new BigNumber(ethUSDPrice);
     return this.ethPriceBN;
   }
