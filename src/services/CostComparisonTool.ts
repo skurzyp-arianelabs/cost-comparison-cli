@@ -4,6 +4,7 @@ import {
   SupportedChain,
   SupportedOperation,
   FullTransactionResult,
+  NetworkType,
 } from '../types';
 import { ChainOperationsFactory } from '../chains/factories/OperationsFactory';
 import { IChainOperations } from '../chains/abstract/IChainOperations';
@@ -14,8 +15,8 @@ export class CostComparisonTool {
   private chainOperationsFactory: ChainOperationsFactory;
   private csvService: CsvService;
 
-  constructor() {
-    this.configService = new ConfigService();
+  constructor(network: NetworkType) {
+    this.configService = new ConfigService(network);
     this.chainOperationsFactory = new ChainOperationsFactory(
       this.configService
     );

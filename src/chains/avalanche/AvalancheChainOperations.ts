@@ -27,7 +27,7 @@ export class AvalancheChainOperations implements IChainOperations {
       this.chainConfig.type
     ).privateKey!;
 
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(this.configService);
     this.evmRpcOps = new EvmRpcOperations(
       this.chainConfig.rpcUrls.default.http[0]!,
       privateKey as `0x${string}`

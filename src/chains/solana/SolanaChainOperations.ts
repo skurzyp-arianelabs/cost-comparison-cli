@@ -20,7 +20,7 @@ export class SolanaChainOperations implements IChainOperations {
 
   constructor(private configService: ConfigService) {
     this.chainConfig = this.configService.getChainConfig(SupportedChain.SOLANA);
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(this.configService);
     this.nativeSdkOps = new SolanaNativeOperations(configService);
     this.solPriceInUsd = undefined;
   }

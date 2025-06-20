@@ -22,7 +22,7 @@ export class StellarChainOperations implements IChainOperations {
     this.chainConfig = this.configService.getChainConfig(
       SupportedChain.STELLAR
     );
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(this.configService);
     this.nativeSdkOps = new StellarNativeOperations(configService);
     this.stellarPriceInUsd = undefined;
   }

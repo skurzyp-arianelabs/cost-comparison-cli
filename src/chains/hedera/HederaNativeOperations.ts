@@ -40,9 +40,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
 
   constructor(configService: ConfigService) {
     this.configService = configService;
-    const networkType = this.configService.getWalletCredentials(
-      SupportedChain.HEDERA
-    ).networkType!;
+    const networkType = this.configService.getNetworkType();
     const privateKey = this.configService.getWalletCredentials(
       SupportedChain.HEDERA
     ).privateKey!;
@@ -209,8 +207,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       throw new Error('Account creation failed');
 
     return this.createClient(
-      this.configService.getWalletCredentials(SupportedChain.HEDERA)
-        .networkType!,
+      this.configService.getNetworkType(),
       receipt.accountId?.toString()!,
       accountPrivateKey.toStringDer()
     );
