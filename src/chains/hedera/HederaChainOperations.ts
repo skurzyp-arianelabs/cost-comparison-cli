@@ -14,12 +14,14 @@ import { ConfigService } from '../../services/ConfigService/ConfigService';
 import { HederaNativeOperations } from './HederaNativeOperations';
 import { EvmRpcOperations } from '../evm/EvmRpcOperations';
 import { parseDerKeyToHex } from './hederaUtils';
+import { formatUnits } from "viem";
 
 export class HederaChainOperations implements IChainOperations {
   private coinGeckoApiService: CoinGeckoApiService;
   private nativeSdkOps: INativeHederaSdkOperations;
   private chainConfig: ChainConfig;
   private evmRpcOps: IEvmRpcOperations;
+  private hederaPriceInUsd: BigNumber | undefined;
 
   constructor(private configService: ConfigService) {
     this.chainConfig = this.configService.getChainConfig(SupportedChain.HEDERA);
@@ -28,7 +30,7 @@ export class HederaChainOperations implements IChainOperations {
     ).privateKey!;
     const hexPrivateKey = parseDerKeyToHex(privateKey);
 
-    this.coinGeckoApiService = new CoinGeckoApiService();
+    this.coinGeckoApiService = new CoinGeckoApiService(configService);
     this.evmRpcOps = new EvmRpcOperations(
       this.chainConfig.rpcUrls.default.http[0]!,
       hexPrivateKey
@@ -37,10 +39,14 @@ export class HederaChainOperations implements IChainOperations {
   }
 
   private async getHbarUsdPrice(): Promise<BigNumber> {
+    if (this.hederaPriceInUsd) return this.hederaPriceInUsd;
+
     const hbarUSDPrice = (await this.coinGeckoApiService.getHbarPriceInUsd())[
       'hedera-hashgraph'
     ].usd;
-    return new BigNumber(hbarUSDPrice);
+
+    this.hederaPriceInUsd = new BigNumber(hbarUSDPrice);
+    return this.hederaPriceInUsd;
   }
 
   async generateFullResult(
@@ -49,13 +55,33 @@ export class HederaChainOperations implements IChainOperations {
   ): Promise<FullTransactionResult> {
     const hbarPriceBN = await this.getHbarUsdPrice();
 
+    let totalCostHbar: BigNumber;
+
+    if (partialResult.totalCost != null) {
+      // Already in HBAR, returned by Hashgraph SDK
+      totalCostHbar = new BigNumber(partialResult.totalCost);
+    } else {
+      const gasUsed = new BigNumber(partialResult.gasUsed ?? 0);
+      const gasPrice = new BigNumber(partialResult.gasPrice ?? 0);
+
+      const totalCostTinybar = gasUsed.multipliedBy(gasPrice);
+
+      totalCostHbar = new BigNumber(
+        formatUnits(
+          BigInt(totalCostTinybar.toFixed(0)),
+          this.chainConfig.nativeCurrency.decimals
+        )
+      );
+    }
+
+    const usdCostBN = totalCostHbar.multipliedBy(hbarPriceBN);
+
     return {
       ...partialResult,
       chain: this.chainConfig.type,
       operation,
-      usdCost: new BigNumber(partialResult.totalCost!)
-        .multipliedBy(hbarPriceBN)
-        .toString(),
+      totalCost: totalCostHbar.toString(),
+      usdCost: usdCostBN.toString(),
       nativeCurrencySymbol: this.chainConfig.nativeCurrency.symbol,
     };
   }

@@ -3,11 +3,11 @@ import {
   createNonceManager,
   createPublicClient,
   createWalletClient,
-  formatUnits,
   getContract,
   http,
   parseUnits,
-  PublicClient, stringToHex,
+  PublicClient,
+  stringToHex,
   TransactionReceipt as ViemTransactionReceipt,
   WalletClient,
 } from 'viem';
@@ -39,18 +39,27 @@ export class EvmRpcOperations implements IEvmRpcOperations {
   private formatViemTransactionResult(
     txHash: string,
     receipt: ViemTransactionReceipt,
-    additionalCost: bigint = 0n,
+    additionalCost: bigint = 0n
   ): TransactionResult {
-    const totalCostWei = receipt.gasUsed * receipt.effectiveGasPrice + additionalCost;
-    const totalCostEth = formatUnits(BigInt(totalCostWei), 18);
+    // gasPriceL1, gasUsedL1, l1Fee are returned for the L2 chains transactions like Optimism
+    // @ts-ignore
+    const gasUsedL1 = receipt.l1GasUsed ? BigInt(receipt.l1GasUsed) : 0n;
+    // @ts-ignore
+    const gasPriceL1 = receipt.l1GasPrice ? BigInt(receipt.l1GasPrice) : 0n;
+    // @ts-ignore
+    const l1Fee = receipt.l1Fee ? BigInt(receipt.l1Fee) : 0n;
+
     return {
       transactionHash: txHash,
-      gasUsedL1: receipt.gasUsed.toString(),
-      gasPriceL1: receipt.effectiveGasPrice.toString(),
-      totalCost: totalCostEth.toString(),
+      gasUsed: receipt.gasUsed.toString(),
+      gasPrice: receipt.effectiveGasPrice.toString(),
+      gasUsedL1: gasUsedL1.toString(),
+      gasPriceL1: gasPriceL1.toString(),
+      feeL1: l1Fee.toString(),
       timestamp: Date.now().toString(),
       status: receipt.status === 'success' ? 'success' : 'failed',
       blockNumber: receipt.blockNumber.toString(),
+      additionalCost: additionalCost.toString(),
     };
   }
 
@@ -310,8 +319,7 @@ export class EvmRpcOperations implements IEvmRpcOperations {
    */
   async submitMessage(): Promise<TransactionResult> {
     // 0. Create an account that will receive the message
-    const recipient = (await this.createAccount())
-      .accountAddress;
+    const recipient = (await this.createAccount()).accountAddress;
     const memoText = get900BytesMessage();
 
     // 1. place the transaction with an attached message
@@ -329,10 +337,6 @@ export class EvmRpcOperations implements IEvmRpcOperations {
       });
 
     // the additional cost of transferred tokens must be taken into account
-    return this.formatViemTransactionResult(
-      transferHash,
-      transferReceipt,
-      1n
-    );
+    return this.formatViemTransactionResult(transferHash, transferReceipt, 1n);
   }
 }
