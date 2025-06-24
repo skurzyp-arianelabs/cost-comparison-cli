@@ -1,25 +1,42 @@
 import { cliConfig } from './utils/cli';
+import { ConfigService } from './services/ConfigService/ConfigService';
 import { CostComparisonTool } from './services/CostComparisonTool';
-import { fileURLToPath } from 'url';
-import { SheetsService } from './services/SheetsService';
-import path from 'path';
+import { SheetsService } from './services/SheetsService/SheetsService';
+import {
+  NetworkType,
+  SupportedOperation,
+  SupportedChain,
+  FullTransactionResult,
+  GroupedResults
+} from './types';
 
 async function main() {
   try {
-    const spreadsheetId = process.env.SPREADSHEET_ID;
-    if (!spreadsheetId) {
-      throw new Error('SPREADSHEET_ID not found in .env file');
-    }
 
     console.log('--- CLI FLAGS ---');
     console.log(cliConfig);
 
-    const tool = new CostComparisonTool(cliConfig.network);
-    const csvPath = await tool.run(cliConfig.chains, cliConfig.operations);
+    const networkType = cliConfig.network as NetworkType
+    const configService = new ConfigService(networkType);
 
-    if (csvPath.length > 0) {
-      const sheetsService = SheetsService.getInstance();
-      await sheetsService.putComparisionResultsInGS(spreadsheetId, csvPath);
+    const tool = new CostComparisonTool(configService);
+    const results = await tool.run(cliConfig.chains, cliConfig.operations);
+
+    if (results.length > 0) {
+      // Initialize groups with all SupportedOperation keys
+      const groups: GroupedResults = Object.values(SupportedOperation).reduce((acc, op) => {
+        acc[op] = {} as Record<SupportedChain, FullTransactionResult>;
+        return acc;
+      }, {} as GroupedResults);
+
+      for (const record of results) {
+        const operation = record.operation as SupportedOperation;
+        const chain = record.chain as SupportedChain;
+        groups[operation][chain] = record;
+      }
+
+      const sheetsService = new SheetsService(configService);
+      await sheetsService.putComparisionResultsInGS(groups);
     }
   } catch (error) {
     console.error(
@@ -30,4 +47,12 @@ async function main() {
 
 }
 
-main();
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(
+      'An error occurred while running the CostComparisonTool:',
+      error
+    );
+    process.exit(1);
+  });

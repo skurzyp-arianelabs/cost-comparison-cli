@@ -4,7 +4,6 @@ import {
   SupportedChain,
   SupportedOperation,
   FullTransactionResult,
-  NetworkType,
 } from '../types';
 import { ChainOperationsFactory } from '../chains/factories/OperationsFactory';
 import { IChainOperations } from '../chains/abstract/IChainOperations';
@@ -15,8 +14,8 @@ export class CostComparisonTool {
   private chainOperationsFactory: ChainOperationsFactory;
   private csvService: CsvWriterService;
 
-  constructor(network: NetworkType) {
-    this.configService = new ConfigService(network);
+  constructor(configService: ConfigService) {
+    this.configService = configService;
     this.chainOperationsFactory = new ChainOperationsFactory(
       this.configService
     );
@@ -26,7 +25,7 @@ export class CostComparisonTool {
   public async run(
     chains: SupportedChain[],
     selectedOperations: SupportedOperation[]
-  ): Promise<string> {
+  ): Promise<FullTransactionResult[]> {
     // Create chain operations
     const chainOperationsList = chains.map((chainType) => ({
       chainId: chainType,
@@ -81,7 +80,7 @@ export class CostComparisonTool {
 
     const csvPath = this.csvService.saveCsv('results', csvRows);
     
-    return csvPath;
+    return results;
   }
 
   private async executeSequentialOperations(
