@@ -1,6 +1,7 @@
 import {
   ChainConfig,
   NetworkType,
+  RippleWalletCredentials,
   SupportedChain,
   WalletCredentials,
 } from '../../types';
@@ -63,5 +64,12 @@ export class ConfigService {
 
   public getSpreadsheetIds(): string | undefined {
     return this.spreadsheetId;
+  }
+
+  public getRippleWalletCredentials(): RippleWalletCredentials {
+    return {
+      mnemonic: this.config.get('WALLET_RIPPLE_MNEMONIC'),
+      networkType: this.networkType as NetworkType,
+    };
   }
 }

@@ -30,9 +30,8 @@ export class StellarChainOperations implements IChainOperations {
   private async getStellarUsdPrice(): Promise<BigNumber> {
     if (this.stellarPriceInUsd) return this.stellarPriceInUsd;
 
-    const stellarUSDPrice = (
-      await this.coinGeckoApiService.getStellarPriceInUsd()
-    )['stellar'].usd;
+    const stellarUSDPrice =
+      await this.coinGeckoApiService.getStellarPriceInUsd();
     this.stellarPriceInUsd = new BigNumber(stellarUSDPrice);
     return this.stellarPriceInUsd;
   }
@@ -167,8 +166,8 @@ export class StellarChainOperations implements IChainOperations {
     );
   }
 
-  async hcsSubmitMessage(): Promise<FullTransactionResult> {
-    const result = await this.nativeSdkOps.submitMemoMessage();
+  async submitMessage(): Promise<FullTransactionResult> {
+    const result = await this.nativeSdkOps.submitMessage();
     return await this.generateFullResult(
       result,
       SupportedOperation.SUBMIT_MESSAGE
