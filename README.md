@@ -3,9 +3,9 @@
 1. set envs
 
 1. Set up Google Cloud credentials:
-   - Go to Google Cloud Console
+   - Go to Google Cloud Console (https://console.cloud.google.com/)
    - Create a new project or select an existing one
-   - Enable Google Sheets API
+   - Enable Google Sheets API and Google Drive API
    - Create a service account and download the credentials JSON file
    - Place the credentials file in a secure location
 
