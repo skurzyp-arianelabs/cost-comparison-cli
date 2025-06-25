@@ -138,6 +138,10 @@ The following table demonstrates how we handle special cases where native blockc
    ```
    Then configure all required environment variables.
 
+> To configure the Google Sheets, set
+> `GOOGLE_APPLICATION_CREDENTIALS` to Path to your service account credentials JSON file and 
+> `SPREADSHEET_ID` (optional) to ID of an existing spreadsheet to update
+
 4. **Install dependencies**
    ```bash
    pnpm install
@@ -175,8 +179,18 @@ The following table demonstrates how we handle special cases where native blockc
    transfer-erc721-sdk,\
    submit-message
    ```
+> ⚠️ Windows/PowerShell  when passing multiple values to --chains or --operations should wrap them in quotes.
+
+**Example 2:** Run all actions on all chains testnets:
+   ```bash
+   pnpm start \
+     --network=testnet \
+     --chains=all\
+     --operations=all
+   ```
 
 ---
+
 
 ## 🛠 Chain Configuration
 
