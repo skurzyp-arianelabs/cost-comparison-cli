@@ -12,7 +12,7 @@ const cliSchema = z.object({
 
   chains: z
     .string()
-    .transform((val) => val.split(','))
+    .transform((val) => (val === 'all' ? supportedChains : val.split(',')))
     .refine(
       (chains): chains is SupportedChain[] =>
         chains.every((chain) =>
@@ -25,7 +25,7 @@ const cliSchema = z.object({
 
   operations: z
     .string()
-    .transform((val) => val.split(','))
+    .transform((val) => (val === 'all' ? supportedOperations : val.split(',')))
     .refine(
       (ops): ops is SupportedOperation[] =>
         ops.every((op) =>

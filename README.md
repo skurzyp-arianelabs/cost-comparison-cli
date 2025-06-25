@@ -36,7 +36,6 @@ testnet
 > ```bash
 > pnpm start --network=testnet --chains=solana --operations=create-native-ft
 > ```
-> [TODO: validate this mapping]
 
 ---
 
@@ -61,7 +60,6 @@ transfer-native-nft
 ```
 
 > ⚠️ Some native operations (e.g., token association on Stellar) may not be fully supported.
-> [TODO: confirm support details]
 
 ---
 
@@ -107,7 +105,6 @@ submit-message
 
 * **Message size:** 900 bytes on most chains.
 * **Stellar exception:** Max memo size is 28 bytes.
-  [TODO: confirm limit]
 
 ---
 
@@ -129,19 +126,24 @@ The following table demonstrates how we handle special cases where native blockc
    ```bash
    git clone https://github.com/skurzyp-arianelabs/cost-comparison-cli.git
    ```
-
-2. **Create the `.env` file**
+2. **Set up Google Cloud credentials**
+- Go to Google Cloud Console (https://console.cloud.google.com/)
+- Create a new project or select an existing one
+- Enable Google Sheets API and Google Drive API
+- Create a service account and download the credentials JSON file
+- Place the credentials file in a secure location
+3. **Create the `.env` file**
    ```bash
    cp .env.example .env
    ```
    Then configure all required environment variables.
 
-3. **Install dependencies**
+4. **Install dependencies**
    ```bash
    pnpm install
    ```
 
-4. **Run the CLI app**
+5. **Run the CLI app**
 
    Select a network type (`mainnet`, `testnet`), chains, and operations to test.
 

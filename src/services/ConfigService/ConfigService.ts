@@ -15,6 +15,8 @@ export class ConfigService {
   private chainsConfigs: ChainConfig[];
   private networkType: NetworkType;
   private coinGeckoApiKey: string | undefined;
+  private googleApplicationCredentials: string | undefined;
+  private spreadsheetId: string | undefined;
 
   constructor(networkType: NetworkType) {
     this.loadFromEnv();
@@ -30,6 +32,8 @@ export class ConfigService {
 
   private loadFromEnv(): void {
     this.coinGeckoApiKey = process.env.COINGECKO_API_KEY;
+    this.googleApplicationCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    this.spreadsheetId = process.env.SPREADSHEET_ID;
 
     Object.keys(process.env).forEach((key) => {
       if (key.startsWith('WALLET_')) {
@@ -52,6 +56,14 @@ export class ConfigService {
 
   public getCoinGeckoApiKey(): string | undefined {
     return this.coinGeckoApiKey;
+  }
+
+  public getGoogleApplicationCredentials(): string | undefined {
+    return this.googleApplicationCredentials;
+  }
+
+  public getSpreadsheetIds(): string | undefined {
+    return this.spreadsheetId;
   }
 
   public getRippleWalletCredentials(): RippleWalletCredentials {
