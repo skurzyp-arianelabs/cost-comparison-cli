@@ -1,10 +1,9 @@
 import { ConfigService } from './ConfigService/ConfigService';
-import { CsvService, CsvRow } from './CsvService';
+import { CsvWriterService, CsvRow } from './CsvWriterService';
 import {
   SupportedChain,
   SupportedOperation,
   FullTransactionResult,
-  NetworkType,
 } from '../types';
 import { ChainOperationsFactory } from '../chains/factories/OperationsFactory';
 import { IChainOperations } from '../chains/abstract/IChainOperations';
@@ -13,20 +12,20 @@ import { ChainOperationsStrategy } from '../chains/ChainOperationsStrategy';
 export class CostComparisonTool {
   private configService: ConfigService;
   private chainOperationsFactory: ChainOperationsFactory;
-  private csvService: CsvService;
+  private csvService: CsvWriterService;
 
-  constructor(network: NetworkType) {
-    this.configService = new ConfigService(network);
+  constructor(configService: ConfigService) {
+    this.configService = configService;
     this.chainOperationsFactory = new ChainOperationsFactory(
       this.configService
     );
-    this.csvService = new CsvService();
+    this.csvService = new CsvWriterService();
   }
 
   public async run(
     chains: SupportedChain[],
     selectedOperations: SupportedOperation[]
-  ): Promise<void> {
+  ): Promise<FullTransactionResult[]> {
     // Create chain operations
     const chainOperationsList = chains.map((chainType) => ({
       chainId: chainType,
@@ -79,7 +78,9 @@ export class CostComparisonTool {
       timestamp: result.timestamp,
     }));
 
-    this.csvService.saveCsv('results', csvRows);
+    const csvPath = this.csvService.saveCsv('results', csvRows);
+    
+    return results;
   }
 
   private async executeSequentialOperations(
