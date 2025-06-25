@@ -50,8 +50,8 @@ export function createSheetsConstants() {
         ['', '', '', `Cheaper by under ${VERY_MULTIPLIER}X`, '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', `Very Cheap over ${VERY_MULTIPLIER}X`, '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['', '', 'Hedera', '', 'Solana', '', 'Stellar', '', 'Avalanche', '', 'Ripple', '', '', '', '', '', '', '', ''],
-        ['', '', 'Fixed price', '', 'Average', '', 'Average', '', 'Average', '', 'Average', '', '', '', '', '', '', '', ''],
+        ['', '', 'Hedera', '', 'Solana', '', 'Stellar', '', 'Avalanche', '', 'Ripple', '', 'Optimism', '', '', '', '', '', ''],
+        ['', '', 'Fixed price', '', 'Average', '', 'Average', '', 'Average', '', 'Average', '', 'Average', '', '', '', '', '', ''],
         ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['Native Tokens - Fungible', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['  Create', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
@@ -99,13 +99,13 @@ export function createSheetsConstants() {
     'D3:G3',
     'D4:G4',
     // Section headers
-    'A9:K9',
-    'A15:K15',
-    'A21:K21',
-    'A26:K26',
-    'A31:K31',
-    'A36:K36',
-    'A41:K41'
+    'A9:M9',
+    'A15:M15',
+    'A21:M21',
+    'A26:M26',
+    'A31:M31',
+    'A36:M36',
+    'A41:M41'
   ];
 
   const CELL_FORMATS = [
@@ -136,11 +136,11 @@ export function createSheetsConstants() {
       format: formats.veryCheapFormat
     },
     {
-      ranges: ['C6:C7','E6:E7','G6:G7','>I6:I7','K6:K7'],
+      ranges: ['C6:C7','E6:E7','G6:G7','>I6:I7','K6:K7', 'M6:M7'],
       format: formats.dataHeaderFormat
     },
     {
-      ranges: ['A9:K9','A15:K15','A21:K21','A26:K26','A31:K31','A36:K36','A41:K41'],
+      ranges: ['A9:M9','A15:M15','A21:M21','A26:M26','A31:M31','A36:M36','A41:M41'],
       format: formats.sectionHeaderFormat
     }
   ];
