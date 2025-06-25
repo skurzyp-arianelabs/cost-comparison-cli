@@ -1,47 +1,243 @@
-# Cost Comparison Tool
-## Setup
-1. set envs
+# 📊 Cost Comparison Tool
 
-1. Set up Google Cloud credentials:
-   - Go to Google Cloud Console (https://console.cloud.google.com/)
-   - Create a new project or select an existing one
-   - Enable Google Sheets API and Google Drive API
-   - Create a service account and download the credentials JSON file
-   - Place the credentials file in a secure location
+This tool executes multiple on-chain transactions across different blockchain networks and generates a comprehensive cost comparison report.
 
-2. Configure environment variables:
-   - Copy `.env.example` to `.env`
-   - Update the following variables:
-     - TODO: WALLET_HEDERA_PRIVATE_KEY, WALLET_HEDERA_ADDRESS, WALLET_SOLANA_PRIVATE_KEY, NETWORK_TYPE, WALLET_STELLAR_PRIVATE_KEY
-     - `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account credentials JSON file
-     - `SPREADSHEET_ID` (optional): ID of an existing spreadsheet to update
+## ✅ Supported Chains
 
-2. run 
+Currently, six chains are supported. The modular architecture makes it easy to integrate additional chains.
+
+### Available Chains:
+- **Hedera** (Native + EVM support)
+- **Avalanche** (EVM only)
+- **Optimism** (EVM only)
+- **Solana** (Native only)
+- **Stellar** (Native only)
+- **Ripple** (Native only)
+
+Each chain supports both `mainnet` and `testnet`. However, due to inconsistencies in network naming across ecosystems (e.g., Solana's *devnet* aligns with what other chains call *testnet*), the app assumes that a *testnet* replicates the *mainnet*'s node version and protocol features.
+
+### Chain Identifiers:
+```bash
+avalanche
+hedera
+solana
+ripple
+stellar
+optimism
 ```
-pnpm start \
-  --network=testnet \
-  --chains=hedera \
-  --operations=\
-create-native-ft,\
-associate-native-ft,\
-mint-native-ft,\
-transfer-native-ft,\
-create-native-nft,\
-associate-native-nft,\
-mint-native-nft,\
-transfer-native-nft,\
-deploy-erc20-json-rpc,\
-mint-erc20-json-rpc,\
-transfer-erc20-json-rpc,\
-deploy-erc20-sdk,\
-mint-erc20-sdk,\
-transfer-erc20-sdk,\
-deploy-erc721-json-rpc,\
-mint-erc721-json-rpc,\
-transfer-erc721-json-rpc,\
-deploy-erc721-sdk,\
-mint-erc721-sdk,\
-transfer-erc721-sdk,\
+
+### Network Types:
+```bash
+mainnet
+testnet
+```
+
+> **Note:** For Solana, `Devnet` corresponds to:
+> ```bash
+> pnpm start --network=testnet --chains=solana --operations=create-native-ft
+> ```
+
+---
+
+## ⚙️ Supported Operations
+
+Operations are categorized into four groups:
+
+### 1. Native Token Operations
+
+Native token operations leverage each chain's own token standards (non-EVM). Supported on: Hedera, Solana, Ripple, and Stellar.
+
+**Action Slugs:**
+```bash
+create-native-ft
+associate-native-ft
+mint-native-ft
+transfer-native-ft
+create-native-nft
+associate-native-nft
+mint-native-nft
+transfer-native-nft
+```
+
+> ⚠️ Some native operations (e.g., token association on Stellar) may not be fully supported.
+
+---
+
+### 2. EVM-Based Token Operations
+
+These operations use ERC-20 and ERC-721 standards. Implemented via:
+
+* **JSON RPC**
+* **SDKs** (e.g., Hedera Hashgraph SDK)
+
+**Action Slugs:**
+```bash
+deploy-erc20-json-rpc
+mint-erc20-json-rpc
+transfer-erc20-json-rpc
+deploy-erc20-sdk
+mint-erc20-sdk
+transfer-erc20-sdk
+deploy-erc721-json-rpc
+mint-erc721-json-rpc
+transfer-erc721-json-rpc
+deploy-erc721-sdk
+mint-erc721-sdk
+transfer-erc721-sdk
+```
+
+> **Note:** Avalanche and Optimism use the same cost for both SDK and JSON RPC deployments.
+> Therefore for example, `deploy-erc721-sdk` is executed for both SDK and JSON RPC.
+
+---
+
+### 3. Message Submissions
+
+This simulates submitting a message on-chain.
+
+* **Hedera:** Uses native HCS (Hedera Consensus Service) topics.
+* **Other chains:** Simulates message submission via token transfers, including a small payload.
+
+**Action Slug:**
+```bash
 submit-message
-
 ```
+
+* **Message size:** 900 bytes on most chains.
+* **Stellar exception:** Max memo size is 28 bytes.
+
+---
+
+### 4. Special Handling Cases
+The following table demonstrates how we handle special cases where native blockchain functionality or EVM-compatible actions are not fully supported:
+
+| Chain         | Scenario                                                                                                   |
+| ------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Avalanche** | No native tokens. Native ops (e.g. `transfer-native-ft`) use ERC-20 tokens instead.                      |
+| **Optimism**  | No native tokens. Operations like `associate-native-ft` are not supported and will throw a handled error. |
+| **Solana**    | No EVM compatibility. EVM-style ops deploy native Solana tokens via Solana Token Program.                |
+| **Avalanche** | No distinction in cost between JSON RPC and SDK ops. Only one implementation is executed.                |
+
+---
+
+## 🚀 Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/skurzyp-arianelabs/cost-comparison-cli.git
+   ```
+2. **Set up Google Cloud credentials**
+- Go to Google Cloud Console (https://console.cloud.google.com/)
+- Create a new project or select an existing one
+- Enable Google Sheets API and Google Drive API
+- Create a service account and download the credentials JSON file
+- Place the credentials file in a secure location
+3. **Create the `.env` file**
+   ```bash
+   cp .env.example .env
+   ```
+   Then configure all required environment variables.
+
+> To configure the Google Sheets, set
+> `GOOGLE_APPLICATION_CREDENTIALS` to Path to your service account credentials JSON file and 
+> `SPREADSHEET_ID` (optional) to ID of an existing spreadsheet to update
+
+4. **Install dependencies**
+   ```bash
+   pnpm install
+   ```
+
+5. **Run the CLI app**
+
+   Select a network type (`mainnet`, `testnet`), chains, and operations to test.
+
+   **Example:** Run all actions on Hedera and Solana testnets:
+   ```bash
+   pnpm start \
+     --network=testnet \
+     --chains=hedera,solana \
+     --operations=\
+   create-native-ft,\
+   associate-native-ft,\
+   mint-native-ft,\
+   transfer-native-ft,\
+   create-native-nft,\
+   associate-native-nft,\
+   mint-native-nft,\
+   transfer-native-nft,\
+   deploy-erc20-json-rpc,\
+   mint-erc20-json-rpc,\
+   transfer-erc20-json-rpc,\
+   deploy-erc20-sdk,\
+   mint-erc20-sdk,\
+   transfer-erc20-sdk,\
+   deploy-erc721-json-rpc,\
+   mint-erc721-json-rpc,\
+   transfer-erc721-json-rpc,\
+   deploy-erc721-sdk,\
+   mint-erc721-sdk,\
+   transfer-erc721-sdk,\
+   submit-message
+   ```
+> ⚠️ Windows/PowerShell  when passing multiple values to --chains or --operations should wrap them in quotes.
+
+**Example 2:** Run all actions on all chains testnets:
+   ```bash
+   pnpm start \
+     --network=testnet \
+     --chains=all\
+     --operations=all
+   ```
+
+---
+
+
+## 🛠 Chain Configuration
+
+Chains are configured in `./src/services/ConfigService/ChainsConfig.ts`.
+
+* **EVM Chains**: Use presets from `@viem/chains`.
+* **Others**: Manually configured.
+
+**Example: Ripple Testnet Configuration**
+```typescript
+const rippleTestnet: ChainConfig = {
+  type: SupportedChain.RIPPLE,
+  network: NetworkType.TESTNET,
+  name: 'Ripple Testnet',
+  nativeCurrency: {
+    decimals: 6,
+    name: 'Test XRP',
+    symbol: 'TXRP',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://s.altnet.rippletest.net:51234'],
+    },
+  },
+};
+```
+
+Update RPC URLs here if any are deprecated or unavailable.
+
+---
+
+## ⚠️ Known Issues and Limitations
+
+### 1. CoinGecko API Rate Limiting
+
+Token prices are fetched via CoinGecko's free API, which has strict request limits per minute. This may cause failures if:
+
+* Too many chains are selected.
+* The app is rerun quickly.
+
+**Optimization:** Each token's price is fetched once per session to minimize requests.
+However, prices may be a few minutes old for later operations.
+
+---
+
+### 2. Sequential Operation Execution
+
+Due to nonce constraints in EVM-compatible chains, transactions per chain must run sequentially. This ensures nonce consistency and proper submission order.
+
+**However**, different chains run in parallel to optimize overall performance.
