@@ -6,8 +6,7 @@
   "main": "index.ts",
   "scripts": {
     "start": "tsx src/index.ts",
-    "format": "prettier --write 'src/**/*.{ts,tsx,js,json,md}'",
-    "start-with-args": "tsx src/index.ts --network=testnet --chains=hedera --operations=transfer-native-nft"
+    "format": "prettier --write 'src/**/*.{ts,tsx,js,json,md}'"
   },
   "keywords": [],
   "author": "",
@@ -28,23 +27,15 @@
     "axios": "^1.9.0",
     "bignumber.js": "^9.3.0",
     "bs58": "^6.0.0",
-    "chalk": "^5.4.1",
-    "cron": "^4.3.0",
     "csv-parse": "^5.5.3",
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
-    "ethereumjs-util": "^7.1.5",
-    "ethers": "^6.13.5",
     "googleapis": "^133.0.0",
-    "json-2-csv": "^5.5.9",
     "minimist": "^1.2.8",
     "prettier": "^3.5.3",
-    "remeda": "^2.21.2",
-    "rlp": "^3.0.0",
     "simple-statistics": "^7.8.8",
     "stellar-sdk": "^13.3.0",
     "viem": "^2.31.0",
-    "winston": "^3.17.0",
     "xrpl": "^4.3.0",
     "zod": "^3.25.57"
   }

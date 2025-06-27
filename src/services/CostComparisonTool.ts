@@ -66,8 +66,6 @@ export class CostComparisonTool {
       selectedOperations
     );
 
-    console.log(JSON.stringify(results, null, 2));
-
     const csvRows: CsvRow[] = results.map((result) => ({
       chain: result.chain,
       operation: result.operation,
