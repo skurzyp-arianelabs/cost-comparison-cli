@@ -330,12 +330,12 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
    * 2. Deploy a precompiled ERC20 contract
    */
   async createERC20_SDK(): Promise<TransactionResult> {
-    // 1. Deploy a precompiled ERC20 contract
     const evmAddress = await getEvmCompatibleAddress(
       this.hederaMirrorNodeService,
       this.hederaClient.operatorAccountId!
     );
 
+    // 1. Deploy a precompiled ERC20 contract
     const constructorParams = new ContractFunctionParameters().addAddress(
       evmAddress
     );
@@ -358,28 +358,15 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       this.hederaClient.operatorAccountId!
     );
 
-    // 1. Deploy ERC20 contract
+    // 1. Deploy ERC721 contract
     const constructorParams = new ContractFunctionParameters().addAddress(
       evmAddress
     );
-    const { contractId } = await this.deployContract(
-      erc20Compiled.bytecode,
-      1095808,
+    const { txResponse, txReceipt, txRecord } = await this.deployContract(
+      erc721Compiled.bytecode,
+      1305000,
       constructorParams
     );
-
-    // 2. Call mint function on the contract
-    const mintParams = new ContractFunctionParameters()
-      .addAddress(evmAddress)
-      .addUint256(10000); // mint amount
-
-    const { txResponse, txRecord, txReceipt } =
-      await this.executeContractFunction(
-        contractId,
-        'mint',
-        100388,
-        mintParams
-      );
 
     return this.formatTransactionResult(txResponse, txRecord, txReceipt);
   }
@@ -445,7 +432,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       await this.executeContractFunction(
         contractId,
         'mint',
-        100388,
+        75000,
         mintParams
       );
 
@@ -469,7 +456,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
     );
     const { contractId } = await this.deployContract(
       erc721Compiled.bytecode,
-      2095808,
+      1305000,
       constructorParams
     );
 
@@ -479,7 +466,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       await this.executeContractFunction(
         contractId,
         'safeMint',
-        2095808,
+        150000,
         mintParams
       );
 
@@ -548,7 +535,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
     );
     const { contractId } = await this.deployContract(
       erc20Compiled.bytecode,
-      1095808,
+      1100000,
       constructorParams
     );
 
@@ -557,7 +544,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       .addAddress(evmAddress)
       .addUint256(1000); // mint amount
 
-    await this.executeContractFunction(contractId, 'mint', 100388, mintParams);
+    await this.executeContractFunction(contractId, 'mint', 75000, mintParams);
 
     // 3. Create a recipient account
     const recipientClient = await this.createAccountAndReturnClient();
@@ -579,7 +566,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       await this.executeContractFunction(
         contractId,
         'transfer',
-        56311,
+        56000,
         transferParams
       );
 
@@ -605,7 +592,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
     );
     const { contractId } = await this.deployContract(
       erc721Compiled.bytecode,
-      2095808,
+      1305000,
       constructorParams
     );
 
@@ -615,7 +602,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
     await this.executeContractFunction(
       contractId,
       'safeMint',
-      2095808,
+      150000,
       mintParams
     );
 
@@ -640,7 +627,7 @@ export class HederaNativeOperations implements INativeHederaSdkOperations {
       await this.executeContractFunction(
         contractId,
         'transferFrom',
-        2095808,
+        100000,
         transferParams
       );
 
