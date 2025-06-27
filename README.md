@@ -140,7 +140,7 @@ The following table demonstrates how we handle special cases where native blockc
 
 > To configure the Google Sheets, set
 > `GOOGLE_APPLICATION_CREDENTIALS` to Path to your service account credentials JSON file and 
-> `SPREADSHEET_ID` (optional) to ID of an existing spreadsheet to update
+> `SPREADSHEET_ID` to ID of an existing spreadsheet to update, if the spreadsheet contains SUMMARY sheet, it will be overwritten
 
 4. **Install dependencies**
    ```bash
